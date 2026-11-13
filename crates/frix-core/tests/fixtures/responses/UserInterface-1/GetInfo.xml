@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<!-- Scritta a mano da userifSCPD.xml e dal PDF AVM UserInterface; sostituita da quella registrata nel ticket di allineamento. -->
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
+<s:Body>
+<u:GetInfoResponse xmlns:u="urn:dslforum-org:service:UserInterface:1">
+<NewUpgradeAvailable>1</NewUpgradeAvailable>
+<NewPasswordRequired>0</NewPasswordRequired>
+<NewPasswordUserSelectable>1</NewPasswordUserSelectable>
+<NewWarrantyDate>0001-01-01T00:00:00</NewWarrantyDate>
+<NewX_AVM-DE_Version>154.08.30</NewX_AVM-DE_Version>
+<NewX_AVM-DE_DownloadURL>https://download.example.invalid/fritzbox-7590.image</NewX_AVM-DE_DownloadURL>
+<NewX_AVM-DE_InfoURL>https://fritz.com/update-info</NewX_AVM-DE_InfoURL>
+<NewX_AVM-DE_UpdateState>UpdateAvailable</NewX_AVM-DE_UpdateState>
+<NewX_AVM-DE_BuildType>Release</NewX_AVM-DE_BuildType>
+<NewX_AVM-DE_SetupAssistantStatus>1</NewX_AVM-DE_SetupAssistantStatus>
+</u:GetInfoResponse>
+</s:Body>
+</s:Envelope>

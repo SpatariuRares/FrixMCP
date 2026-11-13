@@ -1,0 +1,16 @@
+[package]
+name = "frix-web"
+description = "Dashboard locale di FrixMCP su 127.0.0.1 (vuota fino alla Fase 3)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish = false
+
+[lints]
+workspace = true
+
+[dependencies]
+# perché: client TR-064 e Policy; frix-web non conosce frix-mcp (docs/PROJECT.md §6.1).
+frix-core.workspace = true

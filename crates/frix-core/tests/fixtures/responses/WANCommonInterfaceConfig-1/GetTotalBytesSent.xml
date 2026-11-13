@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<!-- Scritta a mano da wancommonifconfigSCPD.xml e dal PDF AVM WANCommonInterfaceConfig; sostituita da quella registrata nel ticket di allineamento. -->
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
+<s:Body>
+<u:GetTotalBytesSentResponse xmlns:u="urn:dslforum-org:service:WANCommonInterfaceConfig:1">
+<NewTotalBytesSent>123456789</NewTotalBytesSent>
+</u:GetTotalBytesSentResponse>
+</s:Body>
+</s:Envelope>

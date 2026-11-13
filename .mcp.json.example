@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "frix": {
+      "command": "/percorso/del/repo/FrixMCP/target/release/frix-mcp",
+      "args": ["--config", "/Users/<utente>/.config/frixmcp/config.toml"],
+      "env": { "RUST_LOG": "frix=info" }
+    }
+  }
+}

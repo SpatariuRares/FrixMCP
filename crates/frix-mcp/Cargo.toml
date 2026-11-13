@@ -1,0 +1,34 @@
+[package]
+name = "frix-mcp"
+description = "Server MCP (stdio) di FrixMCP: tool di sola lettura sul FRITZ!Box"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish = false
+
+[lints]
+workspace = true
+
+[dependencies]
+# perché: client TR-064 e Policy; frix-mcp non conosce frix-web (docs/PROJECT.md §6.1).
+frix-core.workspace = true
+# perché: server MCP su stdio con le macro dei tool.
+rmcp.workspace = true
+# perché: runtime async del server MCP.
+tokio.workspace = true
+# perché: le risposte dei tool sono struct serializzate in JSON.
+serde.workspace = true
+# perché: JSON delle risposte dei tool.
+serde_json.workspace = true
+# perché: la password letta dal Keychain resta un `SecretString` fino al trasporto.
+secrecy.workspace = true
+
+[dev-dependencies]
+# perché: client MCP nello stesso processo per i test (harness su trasporto in memoria).
+rmcp = { workspace = true, features = ["client"] }
+# perché: router finto con TLS nei test dell'avvio sul trasporto reale.
+rustls.workspace = true
+# perché: verifica indipendente dell'header Digest nel router finto.
+md-5.workspace = true

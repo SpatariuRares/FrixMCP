@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<!-- Scritta a mano da deviceconfigSCPD.xml e dal PDF AVM deviceconfig; sostituita da quella registrata nel ticket di allineamento. -->
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
+<s:Body>
+<u:X_AVM-DE_CreateUrlSIDResponse xmlns:u="urn:dslforum-org:service:DeviceConfig:1">
+<NewX_AVM-DE_UrlSID>sid=fedcba9876543210</NewX_AVM-DE_UrlSID>
+</u:X_AVM-DE_CreateUrlSIDResponse>
+</s:Body>
+</s:Envelope>

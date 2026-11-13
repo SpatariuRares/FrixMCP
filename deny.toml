@@ -1,0 +1,34 @@
+[graph]
+all-features = true
+
+[advisories]
+version = 2
+yanked = "deny"
+ignore = []
+
+[licenses]
+version = 2
+allow = ["MIT", "Apache-2.0", "Apache-2.0 WITH LLVM-exception", "BSD-2-Clause", "BSD-3-Clause", "ISC", "Unicode-3.0", "Zlib", "MPL-2.0", "CDLA-Permissive-2.0"]
+confidence-threshold = 0.9
+# la lista è pensata per le dipendenze future: non segnalare le licenze non ancora incontrate
+unused-allowed-license = "allow"
+
+[licenses.private]
+# i crate del workspace hanno `publish = false`: la loro licenza la controlla il manifest
+ignore = true
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+# le dipendenze `path` interne al workspace non sono wildcard
+allow-wildcard-paths = true
+deny = [
+  { crate = "openssl", reason = "si usa rustls" },
+  { crate = "openssl-sys", reason = "si usa rustls" },
+  { crate = "native-tls", reason = "si usa rustls" },
+]
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]

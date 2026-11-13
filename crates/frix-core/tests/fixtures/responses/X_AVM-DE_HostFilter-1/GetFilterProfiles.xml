@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<!-- Scritta a mano da x_hostfilterSCPD.xml e da x_hostfilter.pdf (AVM): il formato della lista annidata è da verificare sul router; sostituita da quella registrata nel ticket di allineamento. -->
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
+<s:Body>
+<u:GetFilterProfilesResponse xmlns:u="urn:dslforum-org:service:X_AVM-DE_HostFilter:1">
+<NewFilterProfileList>&lt;List&gt;&lt;Item&gt;&lt;Index&gt;0&lt;/Index&gt;&lt;FilterProfileID&gt;filtprof1&lt;/FilterProfileID&gt;&lt;Name&gt;Standard&lt;/Name&gt;&lt;/Item&gt;&lt;Item&gt;&lt;Index&gt;1&lt;/Index&gt;&lt;FilterProfileID&gt;filtprof2&lt;/FilterProfileID&gt;&lt;Name&gt;Gast&lt;/Name&gt;&lt;/Item&gt;&lt;Item&gt;&lt;Index&gt;2&lt;/Index&gt;&lt;FilterProfileID&gt;filtprof3&lt;/FilterProfileID&gt;&lt;Name&gt;Gesperrt&lt;/Name&gt;&lt;/Item&gt;&lt;/List&gt;</NewFilterProfileList>
+</u:GetFilterProfilesResponse>
+</s:Body>
+</s:Envelope>

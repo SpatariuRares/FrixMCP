@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<!-- Scritta a mano da wancommonifconfigSCPD.xml e dal PDF AVM WANCommonInterfaceConfig; sostituita da quella registrata nel ticket di allineamento. -->
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
+<s:Body>
+<u:GetCommonLinkPropertiesResponse xmlns:u="urn:dslforum-org:service:WANCommonInterfaceConfig:1">
+<NewWANAccessType>DSL</NewWANAccessType>
+<NewLayer1UpstreamMaxBitRate>40000000</NewLayer1UpstreamMaxBitRate>
+<NewLayer1DownstreamMaxBitRate>250000000</NewLayer1DownstreamMaxBitRate>
+<NewPhysicalLinkStatus>Up</NewPhysicalLinkStatus>
+<NewX_AVM-DE_DownstreamCurrentUtilization>0</NewX_AVM-DE_DownstreamCurrentUtilization>
+<NewX_AVM-DE_UpstreamCurrentUtilization>0</NewX_AVM-DE_UpstreamCurrentUtilization>
+<NewX_AVM-DE_DownstreamCurrentMaxSpeed>0</NewX_AVM-DE_DownstreamCurrentMaxSpeed>
+<NewX_AVM-DE_UpstreamCurrentMaxSpeed>0</NewX_AVM-DE_UpstreamCurrentMaxSpeed>
+</u:GetCommonLinkPropertiesResponse>
+</s:Body>
+</s:Envelope>

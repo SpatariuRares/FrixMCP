@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<!-- Scritta a mano da hostsSCPD.xml e da TR-064_Hosts.pdf; sostituita da quella registrata nel ticket di allineamento. -->
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
+<s:Body>
+<u:GetHostNumberOfEntriesResponse xmlns:u="urn:dslforum-org:service:Hosts:1">
+<NewHostNumberOfEntries>2</NewHostNumberOfEntries>
+</u:GetHostNumberOfEntriesResponse>
+</s:Body>
+</s:Envelope>

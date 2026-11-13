@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<!-- Scritta a mano da deviceinfoSCPD.xml e dal PDF AVM DeviceInfo; sostituita da quella registrata nel ticket di allineamento. -->
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
+<s:Body>
+<u:GetInfoResponse xmlns:u="urn:dslforum-org:service:DeviceInfo:1">
+<NewManufacturerName>AVM</NewManufacturerName>
+<NewManufacturerOUI>00040E</NewManufacturerOUI>
+<NewModelName>FRITZ!Box 7590</NewModelName>
+<NewDescription>FRITZ!Box 7590 154.08.25</NewDescription>
+<NewProductClass>AVMFritz!Box</NewProductClass>
+<NewSerialNumber>020000000001</NewSerialNumber>
+<NewSoftwareVersion>154.08.25</NewSoftwareVersion>
+<NewHardwareVersion>FRITZ!Box 7590</NewHardwareVersion>
+<NewSpecVersion>1.0</NewSpecVersion>
+<NewProvisioningCode></NewProvisioningCode>
+<NewUpTime>1234567</NewUpTime>
+<NewDeviceLog>12.11.26 10:00:00 evento del log uno
+12.11.26 10:00:01 evento del log &lt;due&gt; &amp; tre</NewDeviceLog>
+</u:GetInfoResponse>
+</s:Body>
+</s:Envelope>

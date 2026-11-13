@@ -1,0 +1,3 @@
+[alias]
+# `cargo xtask record`: registra e oscura le fixture (docs/PROJECT.md §6.6).
+xtask = "run --package xtask --"

@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<!-- Scritta a mano da deviceinfoSCPD.xml e dal PDF AVM DeviceInfo (righe dalla più recente); sostituita da quella registrata nel ticket di allineamento. -->
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
+<s:Body>
+<u:GetDeviceLogResponse xmlns:u="urn:dslforum-org:service:DeviceInfo:1">
+<NewDeviceLog>12.11.26 10:15:02 Anmeldung des Benutzers frixmcp an der FRITZ!Box-Benutzeroberfläche von IP-Adresse 192.168.178.30.
+12.11.26 09:58:41 WLAN-Gerät angemeldet (5 GHz), 866 Mbit/s, PC-192-168-178-30, IP 192.168.178.30, MAC 02:00:00:00:00:30.
+12.11.26 08:00:00 Zeitserver ntp.fritz.box erfolgreich abgefragt.
+12.11.26 07:31:17 Internetverbindung wurde erfolgreich hergestellt. IP-Adresse: 203.0.113.7, DNS-Server: 203.0.113.53 und 203.0.113.54, Gateway: 203.0.113.1, Breitband-PoP: EXAMPLE01, LineID: DEU.EXAMPLE.0000000000
+12.11.26 07:31:10 DSL ist verfügbar (DSL-Synchronisierung besteht mit 109334/39977 kbit/s).</NewDeviceLog>
+</u:GetDeviceLogResponse>
+</s:Body>
+</s:Envelope>

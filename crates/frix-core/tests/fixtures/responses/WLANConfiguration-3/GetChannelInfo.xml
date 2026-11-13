@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<!-- Scritta a mano da wlanconfigSCPD.xml e dal PDF AVM WLANConfiguration; sostituita da quella registrata nel ticket di allineamento. -->
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
+<s:Body>
+<u:GetChannelInfoResponse xmlns:u="urn:dslforum-org:service:WLANConfiguration:3">
+<NewChannel>6</NewChannel>
+<NewPossibleChannels>1,2,3,4,5,6,7,8,9,10,11,12,13</NewPossibleChannels>
+<NewX_AVM-DE_AutoChannelEnabled>1</NewX_AVM-DE_AutoChannelEnabled>
+<NewX_AVM-DE_FrequencyBand>2400</NewX_AVM-DE_FrequencyBand>
+</u:GetChannelInfoResponse>
+</s:Body>
+</s:Envelope>

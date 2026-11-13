@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<!-- Scritta a mano da wancommonifconfigSCPD.xml e dal PDF AVM WANCommonInterfaceConfig; sostituita da quella registrata nel ticket di allineamento. Serie accorciate a 5 campioni. -->
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
+<s:Body>
+<u:X_AVM-DE_GetOnlineMonitorResponse xmlns:u="urn:dslforum-org:service:WANCommonInterfaceConfig:1">
+<NewTotalNumberSyncGroups>1</NewTotalNumberSyncGroups>
+<NewSyncGroupName>sync_dsl</NewSyncGroupName>
+<NewSyncGroupMode>VDSL</NewSyncGroupMode>
+<Newmax_ds>31250000</Newmax_ds>
+<Newmax_us>5000000</Newmax_us>
+<Newds_current_bps>1200000,800000,650000,0,15000</Newds_current_bps>
+<Newmc_current_bps>0,0,0,0,0</Newmc_current_bps>
+<Newus_current_bps>90000,40000,35000,0,1000</Newus_current_bps>
+<Newprio_realtime_bps>50000,20000,20000,0,0</Newprio_realtime_bps>
+<Newprio_high_bps>10000,5000,0,0,0</Newprio_high_bps>
+<Newprio_default_bps>30000,15000,15000,0,1000</Newprio_default_bps>
+<Newprio_low_bps>0,0,0,0,0</Newprio_low_bps>
+</u:X_AVM-DE_GetOnlineMonitorResponse>
+</s:Body>
+</s:Envelope>

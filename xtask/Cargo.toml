@@ -1,0 +1,32 @@
+[package]
+name = "xtask"
+description = "Comandi di sviluppo di FrixMCP: registrazione e oscuramento delle fixture, test live"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish = false
+
+[lints]
+workspace = true
+
+[features]
+# Test live contro il router reale (`tests/live.rs`): solo letture, credenziali dal Keychain.
+# Anche con la feature il test è `#[ignore]`: gira solo con `-- --ignored` (docs/PROJECT.md §6.6).
+live = []
+
+[dependencies]
+# perché: trasporto reale, Policy e classificazione delle azioni registrate.
+frix-core.workspace = true
+# perché: il comando esegue le letture attraverso i tool MCP veri (stessi parametri dell'Agent)
+# e riusa config e flag di `frix-mcp`.
+frix-mcp = { path = "../crates/frix-mcp" }
+# perché: client MCP nello stesso processo per chiamare i tool del server.
+rmcp = { workspace = true, features = ["client"] }
+# perché: runtime async del client MCP e del trasporto.
+tokio.workspace = true
+# perché: argomenti dei tool e oscuramento del JSON della mesh.
+serde_json.workspace = true
+# perché: oscuramento delle risposte SOAP e delle liste XML preservando la struttura.
+quick-xml.workspace = true

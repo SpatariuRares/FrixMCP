@@ -1,0 +1,25 @@
+/target
+**/*.rs.bk
+# segreti e configurazione locale: mai nel repo
+.mcp.json
+config.toml
+# eccezione: l'alias `cargo xtask` (nessun segreto)
+!/.cargo/config.toml
+*.der
+*.pem
+*.crt
+*.key
+*.p12
+*.env
+.env*
+# audit e dati locali
+audit.jsonl
+*.jsonl
+# fixture non oscurate (il comando record scrive qui prima dell'oscuramento)
+crates/frix-core/tests/fixtures/raw/
+# evidence della sessione craft-anything
+analysis/
+# macOS / editor
+.DS_Store
+.idea/
+.vscode/
