@@ -1,0 +1,38 @@
+<?xml version="1.0"?>
+<!-- Scritta a mano da x_homeautoSCPD.xml e da x_homeauto.pdf (AVM); sostituita da quella registrata nel ticket di allineamento. -->
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
+<s:Body>
+<u:GetGenericDeviceInfosResponse xmlns:u="urn:dslforum-org:service:X_AVM-DE_Homeauto:1">
+<NewAIN>11657 0123456</NewAIN>
+<NewDeviceId>16</NewDeviceId>
+<NewFunctionBitMask>35712</NewFunctionBitMask>
+<NewFirmwareVersion>04.25</NewFirmwareVersion>
+<NewManufacturer>AVM</NewManufacturer>
+<NewProductName>FRITZ!DECT 200</NewProductName>
+<NewDeviceName>Presa Lavatrice</NewDeviceName>
+<NewPresent>CONNECTED</NewPresent>
+<NewMultimeterIsEnabled>ENABLED</NewMultimeterIsEnabled>
+<NewMultimeterIsValid>VALID</NewMultimeterIsValid>
+<NewMultimeterPower>12345</NewMultimeterPower>
+<NewMultimeterEnergy>67890</NewMultimeterEnergy>
+<NewTemperatureIsEnabled>ENABLED</NewTemperatureIsEnabled>
+<NewTemperatureIsValid>VALID</NewTemperatureIsValid>
+<NewTemperatureCelsius>215</NewTemperatureCelsius>
+<NewTemperatureOffset>-5</NewTemperatureOffset>
+<NewSwitchIsEnabled>ENABLED</NewSwitchIsEnabled>
+<NewSwitchIsValid>VALID</NewSwitchIsValid>
+<NewSwitchState>ON</NewSwitchState>
+<NewSwitchMode>MANUAL</NewSwitchMode>
+<NewSwitchLock>1</NewSwitchLock>
+<NewHkrIsEnabled>DISABLED</NewHkrIsEnabled>
+<NewHkrIsValid>UNDEFINED</NewHkrIsValid>
+<NewHkrIsTemperature>0</NewHkrIsTemperature>
+<NewHkrSetVentilStatus>CLOSED</NewHkrSetVentilStatus>
+<NewHkrSetTemperature>0</NewHkrSetTemperature>
+<NewHkrReduceVentilStatus>CLOSED</NewHkrReduceVentilStatus>
+<NewHkrReduceTemperature>0</NewHkrReduceTemperature>
+<NewHkrComfortVentilStatus>CLOSED</NewHkrComfortVentilStatus>
+<NewHkrComfortTemperature>0</NewHkrComfortTemperature>
+</u:GetGenericDeviceInfosResponse>
+</s:Body>
+</s:Envelope>

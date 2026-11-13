@@ -1,0 +1,216 @@
+{
+  "_comment": "Scritta a mano dallo schema Mesh-Topology_Schema_v8.7.json (X_AVM-DE_GetMeshListPath); formato reale da verificare sul router (docs/PROJECT.md §14.3). Ogni link compare sotto entrambe le interfacce che collega.",
+  "schema_version": "8.7",
+  "nodes": [
+    {
+      "uid": "n-1",
+      "device_name": "FRITZ-Box-7590",
+      "device_model": "FRITZ!Box 7590",
+      "device_manufacturer": "AVM",
+      "device_firmware_version": "154.08.25",
+      "device_mac_address": "02:00:00:00:00:01",
+      "is_meshed": true,
+      "mesh_role": "master",
+      "meshd_version": "3.13",
+      "node_interfaces": [
+        {
+          "uid": "ni-11",
+          "name": "AP:5G:0",
+          "type": "WLAN",
+          "mac_address": "02:00:00:00:00:02",
+          "blocking_state": "UNKNOWN",
+          "ssid": "Rete-Casa",
+          "opmode": "AP",
+          "security": "WPA2PSK",
+          "current_channel": 36,
+          "node_links": [
+            {
+              "uid": "nl-1",
+              "type": "WLAN",
+              "state": "CONNECTED",
+              "last_connected": 1762900000,
+              "node_1_uid": "n-1",
+              "node_2_uid": "n-2",
+              "node_interface_1_uid": "ni-11",
+              "node_interface_2_uid": "ni-21",
+              "max_data_rate_rx": 1733000,
+              "max_data_rate_tx": 1733000,
+              "cur_data_rate_rx": 866000,
+              "cur_data_rate_tx": 780000,
+              "cur_availability_rx": 99,
+              "cur_availability_tx": 99,
+              "rx_rcpi": -55,
+              "tx_rcpi": 255
+            }
+          ]
+        },
+        {
+          "uid": "ni-12",
+          "name": "LAN:1",
+          "type": "LAN",
+          "mac_address": "02:00:00:00:00:01",
+          "blocking_state": "UNKNOWN",
+          "node_links": [
+            {
+              "uid": "nl-3",
+              "type": "LAN",
+              "state": "CONNECTED",
+              "last_connected": 1762900000,
+              "node_1_uid": "n-1",
+              "node_2_uid": "n-4",
+              "node_interface_1_uid": "ni-12",
+              "node_interface_2_uid": "ni-41",
+              "max_data_rate_rx": 1000000,
+              "max_data_rate_tx": 1000000,
+              "cur_data_rate_rx": 0,
+              "cur_data_rate_tx": 0,
+              "cur_availability_rx": 0,
+              "cur_availability_tx": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "uid": "n-2",
+      "device_name": "FRITZ-Repeater-1200",
+      "device_model": "FRITZ!Repeater 1200",
+      "device_manufacturer": "AVM",
+      "device_firmware_version": "160.08.25",
+      "device_mac_address": "02:00:00:00:20:01",
+      "is_meshed": true,
+      "mesh_role": "slave",
+      "meshd_version": "3.13",
+      "node_interfaces": [
+        {
+          "uid": "ni-21",
+          "name": "UPLINK:5G:0",
+          "type": "WLAN",
+          "mac_address": "02:00:00:00:20:02",
+          "blocking_state": "UNKNOWN",
+          "opmode": "REPEATER",
+          "node_links": [
+            {
+              "uid": "nl-1",
+              "type": "WLAN",
+              "state": "CONNECTED",
+              "last_connected": 1762900000,
+              "node_1_uid": "n-1",
+              "node_2_uid": "n-2",
+              "node_interface_1_uid": "ni-11",
+              "node_interface_2_uid": "ni-21",
+              "max_data_rate_rx": 1733000,
+              "max_data_rate_tx": 1733000,
+              "cur_data_rate_rx": 866000,
+              "cur_data_rate_tx": 780000,
+              "cur_availability_rx": 99,
+              "cur_availability_tx": 99
+            }
+          ]
+        },
+        {
+          "uid": "ni-22",
+          "name": "AP:2G:0",
+          "type": "WLAN",
+          "mac_address": "02:00:00:00:20:03",
+          "blocking_state": "UNKNOWN",
+          "opmode": "AP",
+          "node_links": [
+            {
+              "uid": "nl-2",
+              "type": "WLAN",
+              "state": "CONNECTED",
+              "last_connected": 1762900000,
+              "node_1_uid": "n-2",
+              "node_2_uid": "n-3",
+              "node_interface_1_uid": "ni-22",
+              "node_interface_2_uid": "ni-31",
+              "max_data_rate_rx": 300000,
+              "max_data_rate_tx": 300000,
+              "cur_data_rate_rx": 144000,
+              "cur_data_rate_tx": 130000,
+              "cur_availability_rx": 95,
+              "cur_availability_tx": 95
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "uid": "n-3",
+      "device_name": "iPad-Cucina",
+      "device_model": "",
+      "device_manufacturer": "",
+      "device_firmware_version": "",
+      "device_mac_address": "02:00:00:00:10:02",
+      "is_meshed": false,
+      "mesh_role": "unknown",
+      "meshd_version": "0.0",
+      "node_interfaces": [
+        {
+          "uid": "ni-31",
+          "name": "",
+          "type": "WLAN",
+          "mac_address": "02:00:00:00:10:02",
+          "blocking_state": "UNKNOWN",
+          "node_links": [
+            {
+              "uid": "nl-2",
+              "type": "WLAN",
+              "state": "CONNECTED",
+              "last_connected": 1762900000,
+              "node_1_uid": "n-2",
+              "node_2_uid": "n-3",
+              "node_interface_1_uid": "ni-22",
+              "node_interface_2_uid": "ni-31",
+              "max_data_rate_rx": 300000,
+              "max_data_rate_tx": 300000,
+              "cur_data_rate_rx": 144000,
+              "cur_data_rate_tx": 130000,
+              "cur_availability_rx": 95,
+              "cur_availability_tx": 95
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "uid": "n-4",
+      "device_name": "NAS-Studio",
+      "device_model": "",
+      "device_manufacturer": "",
+      "device_firmware_version": "",
+      "device_mac_address": "02:00:00:00:10:01",
+      "is_meshed": false,
+      "mesh_role": "unknown",
+      "meshd_version": "0.0",
+      "node_interfaces": [
+        {
+          "uid": "ni-41",
+          "name": "eth0",
+          "type": "LAN",
+          "mac_address": "02:00:00:00:10:01",
+          "blocking_state": "UNKNOWN",
+          "node_links": [
+            {
+              "uid": "nl-3",
+              "type": "LAN",
+              "state": "CONNECTED",
+              "last_connected": 1762900000,
+              "node_1_uid": "n-1",
+              "node_2_uid": "n-4",
+              "node_interface_1_uid": "ni-12",
+              "node_interface_2_uid": "ni-41",
+              "max_data_rate_rx": 1000000,
+              "max_data_rate_tx": 1000000,
+              "cur_data_rate_rx": 0,
+              "cur_data_rate_tx": 0,
+              "cur_availability_rx": 0,
+              "cur_availability_tx": 0
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

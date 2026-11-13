@@ -1,0 +1,71 @@
+[workspace]
+resolver = "3"
+members = ["crates/frix-core", "crates/frix-mcp", "crates/frix-web", "xtask"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"   # vedi docs/PROJECT.md §14.1: da confermare prima di rendere pubblico il repo
+repository = "https://github.com/SpatariuRares/FrixMCP"
+# MSRV: edition 2024 richiede >= 1.85; rmcp 3.10.0 dichiara rust-version 1.88 (verificato sul manifest).
+rust-version = "1.88"
+
+[workspace.dependencies]
+# Ogni dipendenza ha una riga `# perché:` e deve superare `cargo deny check`.
+# Versioni candidate in docs/PROJECT.md §6.5; si aggiungono qui solo quando un crate le usa.
+# perché: crate di libreria condiviso dai binari (regola di dipendenza, docs/PROJECT.md §6.1).
+frix-core = { path = "crates/frix-core", version = "0.1.0" }
+# perché: parsing a eventi di tr64desc.xml, SCPD e risposte SOAP (docs/PROJECT.md §6.5).
+quick-xml = "0.42.0"
+# perché: FrixError con varianti tipizzate senza boilerplate (docs/PROJECT.md §6.2).
+thiserror = "2.0.21"
+# perché: SDK MCP ufficiale; solo server, macro e stdio, nessuna feature HTTP (docs/PROJECT.md §6.3).
+rmcp = { version = "3.10.0", default-features = false, features = ["server", "macros", "transport-io"] }
+# perché: runtime async richiesto da rmcp e dal trasporto stdio.
+tokio = { version = "1.54.1", default-features = false, features = ["rt-multi-thread", "macros", "io-std"] }
+# perché: serializzazione delle risposte dei tool come JSON strutturato.
+serde = { version = "1.0.229", features = ["derive"] }
+# perché: JSON delle risposte dei tool e degli argomenti nei test MCP.
+serde_json = "1.0.154"
+# perché: MD5 di HTTP Digest (RFC 2617), l'autenticazione TR-064 (docs/PROJECT.md §5.1).
+md-5 = "0.11.0"
+# perché: TLS verso il router senza OpenSSL; serve un `ServerCertVerifier` proprio per il pin
+# (docs/PROJECT.md §7.4). Provider `ring`: niente cmake/aws-lc nella build.
+rustls = { version = "0.23.46", default-features = false, features = ["ring", "std", "tls12"] }
+# perché: SHA-256 dell'impronta e cnonce casuale; è già nel grafo come provider di rustls.
+ring = "0.17.14"
+# perché: client HTTP del trasporto reale. Scelto con il criterio della docs/PROJECT.md §14.2.1
+# (`cargo tree`, 2026-11-13): reqwest 0.13 + rustls = 83 crate (63 nuovi per il workspace),
+# ureq 3 + rustls = 21 (16 nuovi). reqwest supera la soglia di ~80 → ureq, sincrono,
+# eseguito in `spawn_blocking`. Senza feature: il TLS di ureq resta fuori; frix-core aggancia
+# rustls con il pin tramite un `Connector` dell'API `unversioned` di ureq, da cui `~3.5`.
+ureq = { version = "~3.5.2", default-features = false }
+# perché: file di configurazione `config.toml` (host, Router Account, TLS) fuori dal repo.
+toml = { version = "1.2.1", default-features = false, features = ["std", "parse", "serde"] }
+# perché: password del Router Account come `SecretString`, mai in `Debug` (docs/PROJECT.md §7.5).
+secrecy = "0.10.3"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_debug_implementations = "warn"
+unused_must_use = "deny"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+unimplemented = "deny"
+todo = "warn"
+indexing_slicing = "deny"
+print_stdout = "deny"           # in frix-mcp stdout è il canale MCP
+print_stderr = "warn"
+dbg_macro = "deny"
+missing_errors_doc = "allow"
+module_name_repetitions = "allow"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true

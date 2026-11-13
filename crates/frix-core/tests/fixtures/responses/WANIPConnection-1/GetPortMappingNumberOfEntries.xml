@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<!-- Scritta a mano da wanipconnSCPD.xml e dal PDF AVM WANIPConnection; sostituita da quella registrata nel ticket di allineamento. -->
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
+<s:Body>
+<u:GetPortMappingNumberOfEntriesResponse xmlns:u="urn:dslforum-org:service:WANIPConnection:1">
+<NewPortMappingNumberOfEntries>1</NewPortMappingNumberOfEntries>
+</u:GetPortMappingNumberOfEntriesResponse>
+</s:Body>
+</s:Envelope>

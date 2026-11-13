@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<!-- Scritta a mano da x_hostfilterSCPD.xml e da x_hostfilter.pdf (AVM): risposta per l'IP dell'iPad-Cucina nella lista host di fixture; sostituita da quella registrata nel ticket di allineamento. -->
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
+<s:Body>
+<u:GetHostEntryByIPResponse xmlns:u="urn:dslforum-org:service:X_AVM-DE_HostFilter:1">
+<NewHostName>iPad-Cucina</NewHostName>
+<NewFilterProfileID>filtprof1</NewFilterProfileID>
+<NewTimeUsed>35</NewTimeUsed>
+<NewTimeMax>120</NewTimeMax>
+<NewTicketsInAdvance>1</NewTicketsInAdvance>
+<NewTicketValid>0</NewTicketValid>
+<NewIsTimeShared>1</NewIsTimeShared>
+<NewWANAccess>granted</NewWANAccess>
+</u:GetHostEntryByIPResponse>
+</s:Body>
+</s:Envelope>

@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<!-- Scritta a mano da timeSCPD.xml e dal PDF AVM Time; sostituita da quella registrata nel ticket di allineamento. -->
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
+<s:Body>
+<u:GetInfoResponse xmlns:u="urn:dslforum-org:service:Time:1">
+<NewNTPServer1>ntp.fritz.box</NewNTPServer1>
+<NewNTPServer2></NewNTPServer2>
+<NewCurrentLocalTime>2026-11-12T10:15:30+01:00</NewCurrentLocalTime>
+<NewLocalTimeZone>CET-1CEST,M3.5.0,M10.5.0/3</NewLocalTimeZone>
+<NewLocalTimeZoneName>CET</NewLocalTimeZoneName>
+<NewDaylightSavingsUsed>1</NewDaylightSavingsUsed>
+<NewDaylightSavingsStart>2026-03-29T02:00:00+01:00</NewDaylightSavingsStart>
+<NewDaylightSavingsEnd>2026-10-25T03:00:00+02:00</NewDaylightSavingsEnd>
+</u:GetInfoResponse>
+</s:Body>
+</s:Envelope>

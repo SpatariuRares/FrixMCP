@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<!-- Scritta a mano da wandslifconfigSCPD.xml e dal PDF AVM WANDSLInterfaceConfig; sostituita da quella registrata nel ticket di allineamento. -->
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
+<s:Body>
+<u:GetStatisticsTotalResponse xmlns:u="urn:dslforum-org:service:WANDSLInterfaceConfig:1">
+<NewReceiveBlocks>987654</NewReceiveBlocks>
+<NewTransmitBlocks>123456</NewTransmitBlocks>
+<NewCellDelin>0</NewCellDelin>
+<NewLinkRetrain>2</NewLinkRetrain>
+<NewInitErrors>0</NewInitErrors>
+<NewInitTimeouts>0</NewInitTimeouts>
+<NewLossOfFraming>0</NewLossOfFraming>
+<NewErroredSecs>12</NewErroredSecs>
+<NewSeverelyErroredSecs>1</NewSeverelyErroredSecs>
+<NewFECErrors>52000</NewFECErrors>
+<NewATUCFECErrors>0</NewATUCFECErrors>
+<NewHECErrors>0</NewHECErrors>
+<NewATUCHECErrors>0</NewATUCHECErrors>
+<NewCRCErrors>17</NewCRCErrors>
+<NewATUCCRCErrors>3</NewATUCCRCErrors>
+</u:GetStatisticsTotalResponse>
+</s:Body>
+</s:Envelope>

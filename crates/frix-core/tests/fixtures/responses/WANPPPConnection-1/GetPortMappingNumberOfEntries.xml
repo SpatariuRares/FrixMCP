@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<!-- Scritta a mano da wanpppconnSCPD.xml e dal PDF AVM WANPPPConnection; sostituita da quella registrata nel ticket di allineamento. -->
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
+<s:Body>
+<u:GetPortMappingNumberOfEntriesResponse xmlns:u="urn:dslforum-org:service:WANPPPConnection:1">
+<NewPortMappingNumberOfEntries>2</NewPortMappingNumberOfEntries>
+</u:GetPortMappingNumberOfEntriesResponse>
+</s:Body>
+</s:Envelope>

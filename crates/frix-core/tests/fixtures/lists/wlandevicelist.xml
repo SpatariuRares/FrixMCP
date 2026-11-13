@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Scritta a mano: stessi campi di GetGenericAssociatedDeviceInfo senza il prefisso New, come le altre liste *ListPath (formato reale da verificare, docs/PROJECT.md §14.3). -->
+<List>
+<Item>
+<AssociatedDeviceIndex>0</AssociatedDeviceIndex>
+<AssociatedDeviceMACAddress>02:00:00:00:aa:11</AssociatedDeviceMACAddress>
+<AssociatedDeviceIPAddress>192.168.178.51</AssociatedDeviceIPAddress>
+<AssociatedDeviceAuthState>1</AssociatedDeviceAuthState>
+<X_AVM-DE_Speed>286</X_AVM-DE_Speed>
+<X_AVM-DE_SignalStrength>70</X_AVM-DE_SignalStrength>
+<X_AVM-DE_ChannelWidth>40</X_AVM-DE_ChannelWidth>
+</Item>
+<Item>
+<AssociatedDeviceIndex>1</AssociatedDeviceIndex>
+<AssociatedDeviceMACAddress>02:00:00:00:aa:12</AssociatedDeviceMACAddress>
+<AssociatedDeviceIPAddress>192.168.178.52</AssociatedDeviceIPAddress>
+<AssociatedDeviceAuthState>0</AssociatedDeviceAuthState>
+<X_AVM-DE_Speed>72</X_AVM-DE_Speed>
+<X_AVM-DE_SignalStrength>35</X_AVM-DE_SignalStrength>
+<X_AVM-DE_ChannelWidth>20</X_AVM-DE_ChannelWidth>
+</Item>
+</List>

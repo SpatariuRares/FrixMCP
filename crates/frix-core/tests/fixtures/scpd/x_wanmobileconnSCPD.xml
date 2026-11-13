@@ -1,0 +1,477 @@
+<?xml version="1.0"?>
+<scpd xmlns="urn:dslforum-org:service-1-0">
+<specVersion>
+<major>1</major>
+<minor>0</minor>
+</specVersion>
+<actionList>
+<action>
+<name>GetInfo</name>
+<argumentList>
+<argument>
+<name>NewEnabled</name>
+<direction>out</direction>
+<relatedStateVariable>Enabled</relatedStateVariable>
+</argument>
+<argument>
+<name>NewStatus</name>
+<direction>out</direction>
+<relatedStateVariable>Status</relatedStateVariable>
+</argument>
+<argument>
+<name>NewPINFailureCount</name>
+<direction>out</direction>
+<relatedStateVariable>PINFailureCount</relatedStateVariable>
+</argument>
+<argument>
+<name>NewPUKFailureCount</name>
+<direction>out</direction>
+<relatedStateVariable>PUKFailureCount</relatedStateVariable>
+</argument>
+</argumentList>
+</action>
+<action>
+<name>GetInfoEx</name>
+<argumentList>
+<argument>
+<name>NewSerialNumber</name>
+<direction>out</direction>
+<relatedStateVariable>SerialNumber</relatedStateVariable>
+</argument>
+<argument>
+<name>NewEnableVoIPPDN</name>
+<direction>out</direction>
+<relatedStateVariable>EnableVoIPPDN</relatedStateVariable>
+</argument>
+<argument>
+<name>NewPPPUsername</name>
+<direction>out</direction>
+<relatedStateVariable>PPPUsername</relatedStateVariable>
+</argument>
+<argument>
+<name>NewPPPUsernameVoIP</name>
+<direction>out</direction>
+<relatedStateVariable>PPPUsernameVoIP</relatedStateVariable>
+</argument>
+<argument>
+<name>NewPPPAuthProtocol</name>
+<direction>out</direction>
+<relatedStateVariable>PPPAuthProtocol</relatedStateVariable>
+</argument>
+<argument>
+<name>NewPPPAuthProtocolVoIP</name>
+<direction>out</direction>
+<relatedStateVariable>PPPAuthProtocolVoIP</relatedStateVariable>
+</argument>
+<argument>
+<name>NewSoftwareVersion</name>
+<direction>out</direction>
+<relatedStateVariable>SoftwareVersion</relatedStateVariable>
+</argument>
+<argument>
+<name>NewUptime</name>
+<direction>out</direction>
+<relatedStateVariable>Uptime</relatedStateVariable>
+</argument>
+<argument>
+<name>NewPDN1_MTU</name>
+<direction>out</direction>
+<relatedStateVariable>PDN1_MTU</relatedStateVariable>
+</argument>
+<argument>
+<name>NewPDN2_MTU</name>
+<direction>out</direction>
+<relatedStateVariable>PDN2_MTU</relatedStateVariable>
+</argument>
+<argument>
+<name>NewIMSI</name>
+<direction>out</direction>
+<relatedStateVariable>IMSI</relatedStateVariable>
+</argument>
+<argument>
+<name>NewAPN_VoIP</name>
+<direction>out</direction>
+<relatedStateVariable>APN_VoIP</relatedStateVariable>
+</argument>
+<argument>
+<name>NewAPN</name>
+<direction>out</direction>
+<relatedStateVariable>APN</relatedStateVariable>
+</argument>
+<argument>
+<name>NewRoaming</name>
+<direction>out</direction>
+<relatedStateVariable>Roaming</relatedStateVariable>
+</argument>
+<argument>
+<name>NewCurrentAccessTechnology</name>
+<direction>out</direction>
+<relatedStateVariable>CurrentAccessTechnology</relatedStateVariable>
+</argument>
+<argument>
+<name>NewSignalRSRP0</name>
+<direction>out</direction>
+<relatedStateVariable>SignalRSRP0</relatedStateVariable>
+</argument>
+<argument>
+<name>NewSignalRSRP1</name>
+<direction>out</direction>
+<relatedStateVariable>SignalRSRP1</relatedStateVariable>
+</argument>
+<argument>
+<name>NewCellList</name>
+<direction>out</direction>
+<relatedStateVariable>CellList</relatedStateVariable>
+</argument>
+</argumentList>
+</action>
+<action>
+<name>SetPIN</name>
+<argumentList>
+<argument>
+<name>NewPIN</name>
+<direction>in</direction>
+<relatedStateVariable>PIN</relatedStateVariable>
+</argument>
+</argumentList>
+</action>
+<action>
+<name>SetPUK</name>
+<argumentList>
+<argument>
+<name>NewPIN</name>
+<direction>in</direction>
+<relatedStateVariable>PIN</relatedStateVariable>
+</argument>
+<argument>
+<name>NewPUK</name>
+<direction>in</direction>
+<relatedStateVariable>PUK</relatedStateVariable>
+</argument>
+</argumentList>
+</action>
+<action>
+<name>SetAccessTechnology</name>
+<argumentList>
+<argument>
+<name>NewAccessTechnology</name>
+<direction>in</direction>
+<relatedStateVariable>AccessTechnology</relatedStateVariable>
+</argument>
+</argumentList>
+</action>
+<action>
+<name>GetAccessTechnology</name>
+<argumentList>
+<argument>
+<name>NewAccessTechnology</name>
+<direction>out</direction>
+<relatedStateVariable>AccessTechnology</relatedStateVariable>
+</argument>
+<argument>
+<name>NewPossibleAccessTechnology</name>
+<direction>out</direction>
+<relatedStateVariable>PossibleAccessTechnology</relatedStateVariable>
+</argument>
+<argument>
+<name>NewCurrentAccessTechnology</name>
+<direction>out</direction>
+<relatedStateVariable>CurrentAccessTechnology</relatedStateVariable>
+</argument>
+</argumentList>
+</action>
+<action>
+<name>SetPreferredAccessTechnology</name>
+<argumentList>
+<argument>
+<name>NewPreferredAccessTechnology</name>
+<direction>in</direction>
+<relatedStateVariable>PreferredAccessTechnology</relatedStateVariable>
+</argument>
+</argumentList>
+</action>
+<action>
+<name>GetPreferredAccessTechnology</name>
+<argumentList>
+<argument>
+<name>NewPreferredAccessTechnology</name>
+<direction>out</direction>
+<relatedStateVariable>PreferredAccessTechnology</relatedStateVariable>
+</argument>
+<argument>
+<name>NewPossiblePreferredAccessTechnology</name>
+<direction>out</direction>
+<relatedStateVariable>PossiblePreferredAccessTechnology</relatedStateVariable>
+</argument>
+</argumentList>
+</action>
+<action>
+<name>SetEnabledBandCapabilities</name>
+<argumentList>
+<argument>
+<name>NewBandCapabilitiesLTE</name>
+<direction>in</direction>
+<relatedStateVariable>BandCapabilitiesLTE</relatedStateVariable>
+</argument>
+<argument>
+<name>NewBandCapabilities5GNSA</name>
+<direction>in</direction>
+<relatedStateVariable>BandCapabilities5GNSA</relatedStateVariable>
+</argument>
+<argument>
+<name>NewBandCapabilities5GSA</name>
+<direction>in</direction>
+<relatedStateVariable>BandCapabilities5GSA</relatedStateVariable>
+</argument>
+</argumentList>
+</action>
+<action>
+<name>GetEnabledBandCapabilities</name>
+<argumentList>
+<argument>
+<name>NewBandCapabilitiesLTE</name>
+<direction>out</direction>
+<relatedStateVariable>BandCapabilitiesLTE</relatedStateVariable>
+</argument>
+<argument>
+<name>NewBandCapabilities5GNSA</name>
+<direction>out</direction>
+<relatedStateVariable>BandCapabilities5GNSA</relatedStateVariable>
+</argument>
+<argument>
+<name>NewBandCapabilities5GSA</name>
+<direction>out</direction>
+<relatedStateVariable>BandCapabilities5GSA</relatedStateVariable>
+</argument>
+</argumentList>
+</action>
+<action>
+<name>GetBandCapabilities</name>
+<argumentList>
+<argument>
+<name>NewBandCapabilitiesLTE</name>
+<direction>out</direction>
+<relatedStateVariable>BandCapabilitiesLTE</relatedStateVariable>
+</argument>
+<argument>
+<name>NewBandCapabilities5GNSA</name>
+<direction>out</direction>
+<relatedStateVariable>BandCapabilities5GNSA</relatedStateVariable>
+</argument>
+<argument>
+<name>NewBandCapabilities5GSA</name>
+<direction>out</direction>
+<relatedStateVariable>BandCapabilities5GSA</relatedStateVariable>
+</argument>
+</argumentList>
+</action>
+</actionList>
+<serviceStateTable>
+<stateVariable sendEvents="no">
+<name>AccessTechnology</name>
+<dataType>string</dataType>
+</stateVariable>
+<stateVariable sendEvents="no">
+<name>AllowedCharsPIN</name>
+<dataType>string</dataType>
+<defaultValue>0123456789</defaultValue>
+</stateVariable>
+<stateVariable sendEvents="no">
+<name>AllowedCharsPUK</name>
+<dataType>string</dataType>
+<defaultValue>0123456789</defaultValue>
+</stateVariable>
+<stateVariable sendEvents="no">
+<name>APN</name>
+<dataType>string</dataType>
+</stateVariable>
+<stateVariable sendEvents="no">
+<name>APN_VoIP</name>
+<dataType>string</dataType>
+</stateVariable>
+<stateVariable sendEvents="no">
+<name>BandCapabilitiesLTE</name>
+<dataType>string</dataType>
+</stateVariable>
+<stateVariable sendEvents="no">
+<name>BandCapabilities5GNSA</name>
+<dataType>string</dataType>
+</stateVariable>
+<stateVariable sendEvents="no">
+<name>BandCapabilities5GSA</name>
+<dataType>string</dataType>
+</stateVariable>
+<stateVariable sendEvents="no">
+<name>CellList</name>
+<dataType>string</dataType>
+</stateVariable>
+<stateVariable sendEvents="no">
+<name>CurrentAccessTechnology</name>
+<dataType>string</dataType>
+<allowedValueList>
+<allowedValue>GSM</allowedValue>
+<allowedValue>UMTS</allowedValue>
+<allowedValue>EDGE</allowedValue>
+<allowedValue>HSDPA</allowedValue>
+<allowedValue>LTE</allowedValue>
+<allowedValue>LTE-5GCN</allowedValue>
+<allowedValue>5GCN</allowedValue>
+<allowedValue>5G-SA</allowedValue>
+<allowedValue>5G-NSA</allowedValue>
+<allowedValue>unknown</allowedValue>
+</allowedValueList>
+<defaultValue>unknown</defaultValue>
+</stateVariable>
+<stateVariable sendEvents="no">
+<name>Enabled</name>
+<dataType>boolean</dataType>
+<defaultValue>0</defaultValue>
+</stateVariable>
+<stateVariable sendEvents="no">
+<name>EnableVoIPPDN</name>
+<dataType>boolean</dataType>
+<defaultValue>0</defaultValue>
+</stateVariable>
+<stateVariable sendEvents="no">
+<name>IMSI</name>
+<dataType>string</dataType>
+</stateVariable>
+<stateVariable sendEvents="no">
+<name>MaxCharsPIN</name>
+<dataType>ui2</dataType>
+<defaultValue>8</defaultValue>
+</stateVariable>
+<stateVariable sendEvents="no">
+<name>MinCharsPIN</name>
+<dataType>ui2</dataType>
+<defaultValue>4</defaultValue>
+</stateVariable>
+<stateVariable sendEvents="no">
+<name>PDN1_MTU</name>
+<dataType>ui4</dataType>
+<defaultValue>0</defaultValue>
+</stateVariable>
+<stateVariable sendEvents="no">
+<name>PDN2_MTU</name>
+<dataType>ui4</dataType>
+<defaultValue>0</defaultValue>
+</stateVariable>
+<stateVariable sendEvents="no">
+<name>PossiblePreferredAccessTechnology</name>
+<dataType>string</dataType>
+</stateVariable>
+<stateVariable sendEvents="no">
+<name>PreferredAccessTechnology</name>
+<dataType>string</dataType>
+</stateVariable>
+<stateVariable sendEvents="no">
+<name>PIN</name>
+<dataType>string</dataType>
+</stateVariable>
+<stateVariable sendEvents="no">
+<name>PINFailureCount</name>
+<dataType>ui2</dataType>
+<defaultValue>0</defaultValue>
+<allowedValueRange>
+<minimum>0</minimum>
+<maximum>3</maximum>
+<step>1</step>
+</allowedValueRange>
+</stateVariable>
+<stateVariable sendEvents="no">
+<name>PossibleAccessTechnology</name>
+<dataType>string</dataType>
+</stateVariable>
+<stateVariable sendEvents="no">
+<name>PPPAuthProtocol</name>
+<dataType>string</dataType>
+<allowedValueList>
+<allowedValue>PAP</allowedValue>
+<allowedValue>CHAP</allowedValue>
+<allowedValue>unknown</allowedValue>
+</allowedValueList>
+</stateVariable>
+<stateVariable sendEvents="no">
+<name>PPPAuthProtocolVoIP</name>
+<dataType>string</dataType>
+<allowedValueList>
+<allowedValue>PAP</allowedValue>
+<allowedValue>CHAP</allowedValue>
+<allowedValue>unknown</allowedValue>
+</allowedValueList>
+</stateVariable>
+<stateVariable sendEvents="no">
+<name>PPPUsername</name>
+<dataType>string</dataType>
+</stateVariable>
+<stateVariable sendEvents="no">
+<name>PPPUsernameVoIP</name>
+<dataType>string</dataType>
+</stateVariable>
+<stateVariable sendEvents="no">
+<name>PUK</name>
+<dataType>string</dataType>
+</stateVariable>
+<stateVariable sendEvents="no">
+<name>PUKFailureCount</name>
+<dataType>ui2</dataType>
+<defaultValue>0</defaultValue>
+<allowedValueRange>
+<minimum>0</minimum>
+<maximum>10</maximum>
+<step>1</step>
+</allowedValueRange>
+</stateVariable>
+<stateVariable sendEvents="no">
+<name>Roaming</name>
+<dataType>boolean</dataType>
+<defaultValue>0</defaultValue>
+</stateVariable>
+<stateVariable sendEvents="no">
+<name>SignalRSRP0</name>
+<dataType>i4</dataType>
+<defaultValue>0</defaultValue>
+</stateVariable>
+<stateVariable sendEvents="no">
+<name>SignalRSRP1</name>
+<dataType>i4</dataType>
+<defaultValue>0</defaultValue>
+</stateVariable>
+<stateVariable sendEvents="no">
+<name>SerialNumber</name>
+<dataType>string</dataType>
+</stateVariable>
+<stateVariable sendEvents="no">
+<name>Status</name>
+<dataType>string</dataType>
+<allowedValueList>
+<allowedValue>factory default</allowedValue>
+<allowedValue>unconfigured</allowedValue>
+<allowedValue>PIN configured</allowedValue>
+<allowedValue>checking SIM card</allowedValue>
+<allowedValue>PIN successful</allowedValue>
+<allowedValue>no PIN mode</allowedValue>
+<allowedValue>change PIN</allowedValue>
+<allowedValue>SIM unlock</allowedValue>
+<allowedValue>SIM lock</allowedValue>
+<allowedValue>SIM card defect</allowedValue>
+<allowedValue>SIM card locked</allowedValue>
+<allowedValue>no SIM card</allowedValue>
+<allowedValue>enter PIN</allowedValue>
+<allowedValue>enter PUK</allowedValue>
+<allowedValue>PIN not possible</allowedValue>
+<allowedValue>unknown</allowedValue>
+</allowedValueList>
+<defaultValue>unknown</defaultValue>
+</stateVariable>
+<stateVariable sendEvents="no">
+<name>SoftwareVersion</name>
+<dataType>string</dataType>
+</stateVariable>
+<stateVariable sendEvents="no">
+<name>Uptime</name>
+<dataType>ui4</dataType>
+<defaultValue>0</defaultValue>
+</stateVariable>
+</serviceStateTable>
+</scpd>

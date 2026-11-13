@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<!-- Scritta a mano da wandslifconfigSCPD.xml e dal PDF AVM WANDSLInterfaceConfig; sostituita da quella registrata nel ticket di allineamento. -->
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
+<s:Body>
+<u:X_AVM-DE_GetDSLInfoResponse xmlns:u="urn:dslforum-org:service:WANDSLInterfaceConfig:1">
+<NewSNRGds>1</NewSNRGds>
+<NewSNRGus>1</NewSNRGus>
+<NewSNRpsds>65,64,66</NewSNRpsds>
+<NewSNRpsus>90,91,89</NewSNRpsus>
+<NewSNRMTds>0</NewSNRMTds>
+<NewSNRMTus>0</NewSNRMTus>
+<NewLATNds>143</NewLATNds>
+<NewLATNus>0</NewLATNus>
+<NewFECErrors>52000</NewFECErrors>
+<NewCRCErrors>17</NewCRCErrors>
+<NewLinkStatus>Up</NewLinkStatus>
+<NewModulationType>VDSL</NewModulationType>
+<NewCurrentProfile>35b</NewCurrentProfile>
+<NewUpstreamCurrRate>40000</NewUpstreamCurrRate>
+<NewDownstreamCurrRate>250000</NewDownstreamCurrRate>
+<NewUpstreamMaxRate>46200</NewUpstreamMaxRate>
+<NewDownstreamMaxRate>283500</NewDownstreamMaxRate>
+<NewUpstreamNoiseMargin>90</NewUpstreamNoiseMargin>
+<NewDownstreamNoiseMargin>65</NewDownstreamNoiseMargin>
+<NewUpstreamAttenuation>0</NewUpstreamAttenuation>
+<NewDownstreamAttenuation>143</NewDownstreamAttenuation>
+<NewATURVendor>41564d00</NewATURVendor>
+<NewATURCountry>0400</NewATURCountry>
+<NewUpstreamPower>500</NewUpstreamPower>
+<NewDownstreamPower>513</NewDownstreamPower>
+</u:X_AVM-DE_GetDSLInfoResponse>
+</s:Body>
+</s:Envelope>

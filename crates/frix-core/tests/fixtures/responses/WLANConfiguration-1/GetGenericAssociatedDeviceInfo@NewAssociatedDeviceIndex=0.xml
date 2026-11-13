@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<!-- Scritta a mano da wlanconfigSCPD.xml e dal PDF AVM WLANConfiguration; sostituita da quella registrata nel ticket di allineamento. -->
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
+<s:Body>
+<u:GetGenericAssociatedDeviceInfoResponse xmlns:u="urn:dslforum-org:service:WLANConfiguration:1">
+<NewAssociatedDeviceMACAddress>02:00:00:00:aa:01</NewAssociatedDeviceMACAddress>
+<NewAssociatedDeviceIPAddress>192.168.178.31</NewAssociatedDeviceIPAddress>
+<NewAssociatedDeviceAuthState>1</NewAssociatedDeviceAuthState>
+<NewX_AVM-DE_Speed>144</NewX_AVM-DE_Speed>
+<NewX_AVM-DE_SignalStrength>78</NewX_AVM-DE_SignalStrength>
+<NewX_AVM-DE_ChannelWidth>20</NewX_AVM-DE_ChannelWidth>
+</u:GetGenericAssociatedDeviceInfoResponse>
+</s:Body>
+</s:Envelope>

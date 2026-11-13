@@ -1,0 +1,39 @@
+<?xml version="1.0"?>
+<!-- Scritta a mano da wanpppconnSCPD.xml e dal PDF AVM WANPPPConnection; sostituita da quella registrata nel ticket di allineamento. -->
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
+<s:Body>
+<u:GetInfoResponse xmlns:u="urn:dslforum-org:service:WANPPPConnection:1">
+<NewEnable>1</NewEnable>
+<NewConnectionStatus>Connected</NewConnectionStatus>
+<NewPossibleConnectionTypes>IP_Routed</NewPossibleConnectionTypes>
+<NewConnectionType>IP_Routed</NewConnectionType>
+<NewName>internet</NewName>
+<NewUptime>86400</NewUptime>
+<NewUpstreamMaxBitRate>40000000</NewUpstreamMaxBitRate>
+<NewDownstreamMaxBitRate>250000000</NewDownstreamMaxBitRate>
+<NewLastConnectionError>ERROR_NONE</NewLastConnectionError>
+<NewIdleDisconnectTime>0</NewIdleDisconnectTime>
+<NewRSIPAvailable>0</NewRSIPAvailable>
+<NewUserName>utente-ppp-segreto@provider.example</NewUserName>
+<NewNATEnabled>1</NewNATEnabled>
+<NewExternalIPAddress>203.0.113.45</NewExternalIPAddress>
+<NewDNSServers>198.51.100.53, 198.51.100.54</NewDNSServers>
+<NewMACAddress>02:00:00:00:00:02</NewMACAddress>
+<NewConnectionTrigger>AlwaysOn</NewConnectionTrigger>
+<NewLastAuthErrorInfo></NewLastAuthErrorInfo>
+<NewMaxCharsUsername>128</NewMaxCharsUsername>
+<NewMinCharsUsername>0</NewMinCharsUsername>
+<NewAllowedCharsUsername>0123456789abcdefghijklmnopqrstuvwxyz@.-_</NewAllowedCharsUsername>
+<NewMaxCharsPassword>128</NewMaxCharsPassword>
+<NewMinCharsPassword>0</NewMinCharsPassword>
+<NewAllowedCharsPassword>0123456789abcdefghijklmnopqrstuvwxyz@.-_</NewAllowedCharsPassword>
+<NewTransportType>PPPoE</NewTransportType>
+<NewRouteProtocolRx>Off</NewRouteProtocolRx>
+<NewPPPoEServiceName></NewPPPoEServiceName>
+<NewRemoteIPAddress>192.0.2.1</NewRemoteIPAddress>
+<NewPPPoEACName>BRAS-ESEMPIO</NewPPPoEACName>
+<NewDNSEnabled>1</NewDNSEnabled>
+<NewDNSOverrideAllowed>0</NewDNSOverrideAllowed>
+</u:GetInfoResponse>
+</s:Body>
+</s:Envelope>

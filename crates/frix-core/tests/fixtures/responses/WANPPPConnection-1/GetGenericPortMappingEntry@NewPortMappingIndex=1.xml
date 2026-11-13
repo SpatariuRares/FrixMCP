@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<!-- Scritta a mano da wanpppconnSCPD.xml e dal PDF AVM WANPPPConnection; sostituita da quella registrata nel ticket di allineamento. -->
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
+<s:Body>
+<u:GetGenericPortMappingEntryResponse xmlns:u="urn:dslforum-org:service:WANPPPConnection:1">
+<NewRemoteHost></NewRemoteHost>
+<NewExternalPort>51820</NewExternalPort>
+<NewProtocol>UDP</NewProtocol>
+<NewInternalPort>51820</NewInternalPort>
+<NewInternalClient>192.168.178.41</NewInternalClient>
+<NewEnabled>0</NewEnabled>
+<NewPortMappingDescription>WireGuard</NewPortMappingDescription>
+<NewLeaseDuration>0</NewLeaseDuration>
+</u:GetGenericPortMappingEntryResponse>
+</s:Body>
+</s:Envelope>

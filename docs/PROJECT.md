@@ -1243,7 +1243,9 @@ Decisione da prendere **prima del primo push** (cambiare dopo è possibile ma sp
 ### 14.3 Cose da verificare sul router (prima riga di codice che le usa)
 
 - [ ] Parametri Digest (`qop`, `algorithm`, `opaque`) della risposta 401 del 7590.
+- [ ] Come il 7590 segnala un blocco dopo Digest falliti sul TR-064 (401 senza sfida, 503, `Retry-After`, altro). `BlockTime` appartiene al login SID di `login_sid.lua` (§5.2), non al Digest: `frix-core` oggi non ritenta dopo un rifiuto e rispetta solo i 503 (`transport/router.rs`).
 - [ ] Se i path di `X_AVM-DE_Get*ListPath` includono già `sid` o serve `CreateUrlSID`.
+- [ ] Nomi dei campi della lista di `X_AVM-DE_GetWLANDeviceListPath`: `frix-core` presume quelli di `GetGenericAssociatedDeviceInfo` senza `New` (fixture scritta a mano `lists/wlandevicelist.xml`); se non tornano, `list_wifi_clients` ripiega sulla lettura per indice.
 - [ ] Quale istanza `WLANConfiguration` è quale (2,4 / 5 / ospiti).
 - [ ] `WANAccessType` e quale fra WANPPPConnection/WANIPConnection è attivo.
 - [ ] SAN del certificato autofirmato (IP presente?).

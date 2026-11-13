@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<!-- Scritta a mano da hostsSCPD.xml e da TR-064_Hosts.pdf; sostituita da quella registrata nel ticket di allineamento. -->
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
+<s:Body>
+<u:X_AVM-DE_GetMeshListPathResponse xmlns:u="urn:dslforum-org:service:Hosts:1">
+<NewX_AVM-DE_MeshListPath>/meshlist.lua?sid=0123456789abcdef</NewX_AVM-DE_MeshListPath>
+</u:X_AVM-DE_GetMeshListPathResponse>
+</s:Body>
+</s:Envelope>

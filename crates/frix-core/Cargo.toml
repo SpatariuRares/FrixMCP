@@ -1,0 +1,39 @@
+[package]
+name = "frix-core"
+description = "Client TR-064 per FRITZ!Box con Policy di sola lettura (libreria di FrixMCP)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish = false
+
+[lints]
+workspace = true
+
+[dependencies]
+# perché: parsing di tr64desc.xml, SCPD e risposte SOAP.
+quick-xml.workspace = true
+# perché: parsing del JSON della topologia mesh (`X_AVM-DE_GetMeshListPath`, schema v8.7) e di `config.toml`
+# con `deny_unknown_fields` (nessuna chiave ignorata).
+serde.workspace = true
+# perché: parsing del JSON della topologia mesh (`X_AVM-DE_GetMeshListPath`, schema v8.7).
+serde_json.workspace = true
+# perché: FrixError, l'errore di dominio di frix-core.
+thiserror.workspace = true
+# perché: risposta HTTP Digest (RFC 2617).
+md-5.workspace = true
+# perché: password del Router Account non stampabile.
+secrecy.workspace = true
+# perché: TLS pinnato verso il router (docs/PROJECT.md §7.4).
+rustls.workspace = true
+# perché: impronta SHA-256 del certificato, cnonce e hash SHA-256 del Digest (RFC 7616).
+ring.workspace = true
+# perché: client HTTP/1.1 del trasporto reale verso il router.
+ureq.workspace = true
+# perché: il client HTTP è sincrono e gira in `spawn_blocking` dietro l'interfaccia async.
+tokio.workspace = true
+# perché: lettura di `config.toml`.
+toml.workspace = true
+# (tokio serve anche ai test della Policy per la discovery asincrona sul FixtureTransport:
+# è già una dipendenza normale, quindi niente riga in [dev-dependencies].)

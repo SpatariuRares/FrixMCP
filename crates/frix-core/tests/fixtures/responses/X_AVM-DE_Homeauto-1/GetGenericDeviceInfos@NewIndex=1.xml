@@ -1,0 +1,38 @@
+<?xml version="1.0"?>
+<!-- Scritta a mano da x_homeautoSCPD.xml e da x_homeauto.pdf (AVM); sostituita da quella registrata nel ticket di allineamento. -->
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
+<s:Body>
+<u:GetGenericDeviceInfosResponse xmlns:u="urn:dslforum-org:service:X_AVM-DE_Homeauto:1">
+<NewAIN>13979 0654321</NewAIN>
+<NewDeviceId>17</NewDeviceId>
+<NewFunctionBitMask>320</NewFunctionBitMask>
+<NewFirmwareVersion>05.16</NewFirmwareVersion>
+<NewManufacturer>AVM</NewManufacturer>
+<NewProductName>FRITZ!DECT 301</NewProductName>
+<NewDeviceName>Termostato Salotto</NewDeviceName>
+<NewPresent>CONNECTED</NewPresent>
+<NewMultimeterIsEnabled>DISABLED</NewMultimeterIsEnabled>
+<NewMultimeterIsValid>UNDEFINED</NewMultimeterIsValid>
+<NewMultimeterPower>0</NewMultimeterPower>
+<NewMultimeterEnergy>0</NewMultimeterEnergy>
+<NewTemperatureIsEnabled>ENABLED</NewTemperatureIsEnabled>
+<NewTemperatureIsValid>VALID</NewTemperatureIsValid>
+<NewTemperatureCelsius>195</NewTemperatureCelsius>
+<NewTemperatureOffset>0</NewTemperatureOffset>
+<NewSwitchIsEnabled>DISABLED</NewSwitchIsEnabled>
+<NewSwitchIsValid>UNDEFINED</NewSwitchIsValid>
+<NewSwitchState>UNDEFINED</NewSwitchState>
+<NewSwitchMode>UNDEFINED</NewSwitchMode>
+<NewSwitchLock>0</NewSwitchLock>
+<NewHkrIsEnabled>ENABLED</NewHkrIsEnabled>
+<NewHkrIsValid>VALID</NewHkrIsValid>
+<NewHkrIsTemperature>195</NewHkrIsTemperature>
+<NewHkrSetVentilStatus>TEMP</NewHkrSetVentilStatus>
+<NewHkrSetTemperature>210</NewHkrSetTemperature>
+<NewHkrReduceVentilStatus>CLOSED</NewHkrReduceVentilStatus>
+<NewHkrReduceTemperature>0</NewHkrReduceTemperature>
+<NewHkrComfortVentilStatus>TEMP</NewHkrComfortVentilStatus>
+<NewHkrComfortTemperature>220</NewHkrComfortTemperature>
+</u:GetGenericDeviceInfosResponse>
+</s:Body>
+</s:Envelope>
