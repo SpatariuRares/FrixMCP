@@ -953,9 +953,8 @@ In ordine. Le parti sul router vanno fatte dal browser, a mano; i nomi esatti de
    [tls]
    mode = "pin"
    pinned_sha256 = "AA:BB:..."    # dal passo 4
-   [audit]
-   path = "~/Library/Application Support/FrixMCP/audit.jsonl"
    ```
+   Le chiavi sconosciute sono un errore: la sezione `[audit]` arriverà con le scritture della Fase 2 e oggi non va scritta.
 10. **Claude Code.** Copiare `.mcp.json.example` (§13) in `.mcp.json` nel progetto in cui si vuole usarlo (o in `~/.claude.json` per averlo ovunque) e avviare `claude`; `/mcp` deve mostrare `frix` connesso. Per Claude Desktop: stessa voce dentro `mcpServers` in `~/Library/Application Support/Claude/claude_desktop_config.json`.
 11. **Iniziare la Fase 1** dal transport + digest + `GetSecurityPort` + `X_AVM-DE_GetCurrentUser`: è il percorso più corto per un primo tool `get_system_info` funzionante.
 
