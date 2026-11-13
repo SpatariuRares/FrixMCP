@@ -86,11 +86,19 @@ pub fn default_config_path() -> Option<PathBuf> {
 /// bastano. Un `ca_file` relativo nel file si risolve dalla cartella del file;
 /// uno passato come flag, dalla cartella corrente.
 pub fn load(cli: &Cli) -> Result<RouterConfig, FrixError> {
+    load_con_default(cli, default_config_path())
+}
+
+/// [`load`] con il percorso di default passato da fuori, per i test.
+fn load_con_default(cli: &Cli, default: Option<PathBuf>) -> Result<RouterConfig, FrixError> {
     let (percorso, obbligatorio) = match &cli.config {
         Some(p) => (Some(p.clone()), true),
-        None => (default_config_path(), false),
+        None => (default, false),
     };
     let mut file = ConfigFile::default();
+    // Il default assente non è un errore se i flag bastano; se non bastano, l'errore
+    // dice dove è stato cercato il file, invece del solo nome della chiave mancante.
+    let mut default_assente = None;
     if let Some(percorso) = percorso {
         match std::fs::read_to_string(&percorso) {
             Ok(testo) => {
@@ -103,11 +111,18 @@ pub fn load(cli: &Cli) -> Result<RouterConfig, FrixError> {
             Err(e) if obbligatorio || e.kind() != std::io::ErrorKind::NotFound => {
                 return Err(FrixError::Config(format!("{}: {e}", percorso.display())));
             }
-            Err(_) => {}
+            Err(_) => default_assente = Some(percorso),
         }
     }
     file.overridden_by(cli.overrides.clone())
         .resolve(Path::new("."))
+        .map_err(|errore| match (errore, default_assente) {
+            (FrixError::Config(messaggio), Some(percorso)) => FrixError::Config(format!(
+                "{messaggio}; file di config non trovato: {} (crealo o usa --config)",
+                percorso.display()
+            )),
+            (errore, _) => errore,
+        })
 }
 
 #[cfg(test)]
@@ -157,5 +172,29 @@ mod tests {
         let cli = parse(args("--config /percorso/che/non/esiste.toml")).unwrap();
         let errore = load(&cli).unwrap_err();
         assert!(errore.to_string().contains("non/esiste.toml"), "{errore}");
+    }
+
+    #[test]
+    fn config_di_default_mancante_dice_dove_e_stato_cercato() {
+        let cli = parse(args("")).unwrap();
+        let default = PathBuf::from("/percorso/che/non/esiste/config.toml");
+        let errore = load_con_default(&cli, Some(default)).unwrap_err();
+        let testo = errore.to_string();
+        assert!(testo.contains("manca `host`"), "{testo}");
+        assert!(
+            testo.contains("file di config non trovato: /percorso/che/non/esiste/config.toml"),
+            "{testo}"
+        );
+    }
+
+    #[test]
+    fn config_di_default_mancante_va_bene_se_i_flag_bastano() {
+        let cli = parse(args(&format!(
+            "--host 10.0.0.1 --username frix --tls-pin {}",
+            ["AB"; 32].join(":")
+        )))
+        .unwrap();
+        let default = PathBuf::from("/percorso/che/non/esiste/config.toml");
+        assert!(load_con_default(&cli, Some(default)).is_ok());
     }
 }
