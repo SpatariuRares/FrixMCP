@@ -9,7 +9,7 @@ Apri una "security advisory" privata su GitHub (Security → Report a vulnerabil
 ## Modello di sicurezza (riassunto)
 
 - Trasporto MCP solo stdio; dashboard solo su 127.0.0.1 e in sola lettura.
-- Credenziali nel Keychain macOS; mai in file di configurazione o variabili d'ambiente in produzione.
+- Credenziali nel portachiavi di sistema (Keychain macOS, Secret Service su Linux); mai in file di configurazione o variabili d'ambiente in produzione.
 - TLS verso il router con certificato pinnato; nessuna opzione per disabilitare la verifica.
 - Tre livelli di tool: `read` (default), `write` (`--allow-writes`), `dangerous` (`--allow-dangerous` + Confirmation fuori banda dell'Operator). Nella versione attuale esistono solo i tool `read`.
 - Audit di ogni scrittura, con dati sensibili redatti: dà tracciabilità, non prova di manomissione (un processo dello stesso utente può riscriverlo).

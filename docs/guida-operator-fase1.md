@@ -31,6 +31,12 @@ Annota l'impronta (`AA:BB:…`) e se nel SAN compare l'IP `192.168.178.1`.
 security add-generic-password -s FrixMCP -a frixmcp -w
 ```
 
+Su Linux la password va nel Secret Service (GNOME Keyring o KWallet):
+
+```sh
+secret-tool store --label=FrixMCP service FrixMCP account frixmcp
+```
+
 **4. Config** in `~/.config/frixmcp/config.toml`, fuori dal repo:
 
 ```sh

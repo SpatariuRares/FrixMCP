@@ -1,13 +1,16 @@
-//! Password del Router Account dal Keychain di macOS (docs/PROJECT.md §7.5, §13.5):
-//! voce "generic password" con service `FrixMCP` e account = `username` del config.
+//! Password del Router Account dal portachiavi di sistema (docs/PROJECT.md §7.5, §13.5):
+//! su macOS il Keychain (voce "generic password"), su Linux il Secret Service
+//! (GNOME Keyring o `KWallet`) via `secret-tool`. In entrambi i casi la voce ha
+//! service `FrixMCP` e account = `username` del config.
 //!
 //! Scelta (docs/PROJECT.md §14.2.3): la CLI `/usr/bin/security` invece del crate
 //! `keyring`. Il crate 4.x non ha più un backend implicito: va scelto lo store
 //! `apple-native-keyring-store` (feature `keychain`, che porta `security-framework`
 //! e FFI) e registrato a runtime, ed esiste solo su macOS. La CLI non aggiunge
 //! dipendenze, compila ovunque (sugli altri sistemi la lettura fallisce con un
-//! errore chiaro) e legge la stessa voce del Keychain. Non c'è alcun fallback a file
-//! o variabili d'ambiente.
+//! errore chiaro) e legge la stessa voce del Keychain. Su Linux vale la stessa scelta
+//! con `/usr/bin/secret-tool` (libsecret). Non c'è alcun fallback a file o variabili
+//! d'ambiente.
 
 use std::process::{Command, Stdio};
 
@@ -18,28 +21,43 @@ use crate::error::FrixError;
 /// `service` della voce del Keychain.
 pub const KEYCHAIN_SERVICE: &str = "FrixMCP";
 
-/// Path assoluto: niente `PATH` da cui farsi sostituire il programma.
-const SECURITY: &str = "/usr/bin/security";
+/// Programma che legge la voce. Path assoluto: niente `PATH` da cui farsi sostituire
+/// il programma.
+#[cfg(not(target_os = "linux"))]
+const PROGRAMMA: &str = "/usr/bin/security";
+#[cfg(target_os = "linux")]
+const PROGRAMMA: &str = "/usr/bin/secret-tool";
 
-/// Legge la password di `account` dal Keychain. Gli errori non contengono mai l'output.
+/// Argomenti di [`PROGRAMMA`] per leggere la password di `account`.
+#[cfg(not(target_os = "linux"))]
+fn argomenti(account: &str) -> [&str; 6] {
+    [
+        "find-generic-password",
+        "-s",
+        KEYCHAIN_SERVICE,
+        "-a",
+        account,
+        "-w",
+    ]
+}
+#[cfg(target_os = "linux")]
+fn argomenti(account: &str) -> [&str; 5] {
+    ["lookup", "service", KEYCHAIN_SERVICE, "account", account]
+}
+
+/// Legge la password di `account` dal portachiavi. Gli errori non contengono mai l'output.
 pub fn keychain_password(account: &str) -> Result<SecretString, FrixError> {
-    let uscita = Command::new(SECURITY)
-        .args([
-            "find-generic-password",
-            "-s",
-            KEYCHAIN_SERVICE,
-            "-a",
-            account,
-            "-w",
-        ])
+    let uscita = Command::new(PROGRAMMA)
+        .args(argomenti(account))
         .stdin(Stdio::null())
         .stderr(Stdio::null())
         .output()
-        .map_err(|e| FrixError::Config(format!("impossibile eseguire {SECURITY}: {e}")))?;
+        .map_err(|e| FrixError::Config(format!("impossibile eseguire {PROGRAMMA}: {e}")))?;
     password_from_output(uscita.status.success(), uscita.stdout, account)
 }
 
-/// Interpreta l'output di `security find-generic-password -w`: la password seguita da `\n`.
+/// Interpreta l'output di `security find-generic-password -w` o di `secret-tool lookup`:
+/// la password, seguita da `\n` se c'è.
 fn password_from_output(
     riuscito: bool,
     stdout: Vec<u8>,
@@ -47,7 +65,7 @@ fn password_from_output(
 ) -> Result<SecretString, FrixError> {
     let non_trovata = || {
         FrixError::Config(format!(
-            "password del Router Account `{account}` non trovata nel Keychain \
+            "password del Router Account `{account}` non trovata nel portachiavi \
              (service `{KEYCHAIN_SERVICE}`, account `{account}`)"
         ))
     };
@@ -56,7 +74,7 @@ fn password_from_output(
     }
     let mut password = String::from_utf8(stdout).map_err(|_| {
         FrixError::Config(format!(
-            "la voce del Keychain `{KEYCHAIN_SERVICE}`/`{account}` non è testo UTF-8"
+            "la voce del portachiavi `{KEYCHAIN_SERVICE}`/`{account}` non è testo UTF-8"
         ))
     })?;
     if password.ends_with('\n') {

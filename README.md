@@ -5,7 +5,7 @@ An MCP server that lets an AI assistant read the state of a FRITZ!Box router: co
 Ask Claude "who is connected right now?" or "why is the internet slow?" and it answers from your router's live data instead of you digging through the AVM web interface.
 
 - **Read-only.** Version 0.1 has no tool that changes anything on the router. Every action of the router's 35 TR-064 services is classified, and anything that writes is denied by the policy in `frix-core`.
-- **No secrets in files.** The router password lives in the macOS Keychain.
+- **No secrets in files.** The router password lives in the system keyring: the macOS Keychain, or the Secret Service on Linux (GNOME Keyring, KWallet).
 - **Pinned TLS.** The server talks to the router only over HTTPS on its TR-064 port and accepts only the certificate whose SHA-256 fingerprint you configured.
 - **Nothing exposed.** The server speaks MCP over stdio; it opens no network port.
 
@@ -13,7 +13,7 @@ Tested on a FRITZ!Box 7590 with FRITZ!OS 8.25. Other models with TR-064 probably
 
 ## Requirements
 
-- macOS (the password is read from the Keychain with `/usr/bin/security`).
+- macOS (the password is read from the Keychain with `/usr/bin/security`) or Linux (from the Secret Service with `/usr/bin/secret-tool`, package `libsecret`).
 - Rust 1.88 or newer (`rustup`).
 - A FRITZ!Box with "Access for applications" (TR-064) enabled: Home Network → Network → Network Settings.
 - An MCP client, for example Claude Desktop or Claude Code.
@@ -35,10 +35,18 @@ This puts `frix-mcp` in `~/.cargo/bin`.
 
 FRITZ!OS also grants the Phone, Dial, Smart Home and App rights together with "FRITZ!Box Settings", and they cannot be removed. The read-only policy is what limits the server, not the router account.
 
-**2. Store the password in the Keychain.** The command asks for it interactively:
+**2. Store the password in the keyring.** The command asks for it interactively.
+
+On macOS:
 
 ```sh
 security add-generic-password -s FrixMCP -a frixmcp -w
+```
+
+On Linux:
+
+```sh
+secret-tool store --label=FrixMCP service FrixMCP account frixmcp
 ```
 
 The account (`-a`) must match the `username` in the config.
@@ -103,7 +111,7 @@ Tool descriptions and messages are in Italian; MCP clients and models handle the
 
 ## Security model
 
-The guarantees hold only if the AI has no shell on your Mac. A model that can run commands can read the password from the Keychain and talk to the router directly, bypassing this server. Use Claude Desktop, or Claude Code with Bash denied, for example with this `.claude/settings.json` next to `.mcp.json`:
+The guarantees hold only if the AI has no shell on your computer. A model that can run commands can read the password from the keyring and talk to the router directly, bypassing this server. Use Claude Desktop, or Claude Code with Bash denied, for example with this `.claude/settings.json` next to `.mcp.json`:
 
 ```json
 {

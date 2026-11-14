@@ -506,7 +506,7 @@ FrixMCP/
 │   │   ├── src/
 │   │   │   ├── lib.rs  error.rs
 │   │   │   ├── config.rs          # config.toml: host, Router Account, porte, TLS
-│   │   │   ├── secrets.rs         # Keychain via CLI /usr/bin/security
+│   │   │   ├── secrets.rs         # Keychain via CLI /usr/bin/security, su Linux /usr/bin/secret-tool
 │   │   │   ├── transport/         # trait HttpTransport; router.rs (ureq + pin TLS + Digest), tls.rs, digest.rs, fixture.rs
 │   │   │   ├── tr064/             # Tr064Client: discover, call; scpd.rs, soap.rs, xml.rs
 │   │   │   ├── services/          # un modulo per servizio, API tipizzata (sola lettura oggi)
@@ -590,7 +590,7 @@ Le dipendenze effettive, con versione e motivo (`# perché:`), sono in `Cargo.to
 - ogni dipendenza nuova ha una riga `# perché:` nel manifest e supera `cargo deny check`;
 - niente OpenSSL: TLS solo con `rustls` (provider `ring`);
 - client HTTP: `ureq` sincrono in `spawn_blocking`, scelto contro `reqwest` con il criterio di §14.2.1 (decisione del 2026-11-13, motivata in `Cargo.toml`);
-- Keychain: CLI `/usr/bin/security` invece di un crate (`secrets.rs`, §14.2.3);
+- Keychain: CLI `/usr/bin/security` invece di un crate (`secrets.rs`, §14.2.3); su Linux, con la stessa logica, `/usr/bin/secret-tool`;
 - per le fasi successive i candidati sono: `axum` + `askama` (Fase 3), nessun crate nuovo per l'esecutore e l'audit (Fase 2).
 
 ### 6.6 Testing
@@ -986,7 +986,7 @@ Matrice macOS + Linux; azioni pinnate a commit; toolchain da `rust-toolchain.tom
 
 1. **reqwest 0.13 vs ureq 3.** **Deciso il 2026-11-13: ureq** in `spawn_blocking`. Con rustls, reqwest porta 83 crate, oltre la soglia di ~80; ureq 21 (motivazione in `Cargo.toml`).
 2. **Modalità TLS di default:** **decisa: `pin`**; `ca` resta disponibile ed è implementata. Il SAN del certificato è da verificare (§14.3).
-3. **Keyring crate vs `security` CLI.** **Decisa: CLI `/usr/bin/security`** (`secrets.rs`). Conseguenza: una ACL del Keychain limitata a un binario non protegge nulla, perché il programma che legge la password è `security` sia per `frix-mcp` sia per qualunque altro processo; il confine è quello di §7.0.
+3. **Keyring crate vs `security` CLI.** **Decisa: CLI `/usr/bin/security`** (`secrets.rs`). Conseguenza: una ACL del Keychain limitata a un binario non protegge nulla, perché il programma che legge la password è `security` sia per `frix-mcp` sia per qualunque altro processo; il confine è quello di §7.0. Su Linux la stessa scelta vale con `/usr/bin/secret-tool` (Secret Service), e con lo stesso limite.
 4. **AHA/REST nella v1?** No (§5.2). Riaprire se servono i termostati, con la REST API.
 5. **Endpoint `data.lua`:** fuori dalla v1; se serviranno, solo dietro feature `unstable-ui` e dopo l'analisi della §10.
 6. **Multi-router:** no. `Config` descrive un solo router e non va generalizzato in anticipo.
