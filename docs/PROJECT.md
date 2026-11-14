@@ -102,7 +102,7 @@ Al 2026-11-10 (avvio) la cartella conteneva solo questo documento. Al 2026-11-13
 | 2026-11-12 | Gli Host si indicano sempre per MAC | Un IP DHCP cambia proprietario. Vedi `docs/adr/0002-hosts-addressed-by-mac.md`. |
 | 2026-11-12 | Nessun rollback automatico in v1 | Ogni tool di scrittura dichiara la sua Reversibility; annullare è una nuova scrittura esplicita. |
 | 2026-11-12 | Dashboard solo su loopback | Nessun accesso da altri apparecchi in v1. |
-| 2026-11-13 | Confine di fiducia dichiarato come vincolo di deployment | La policy limita errori e prompt injection, non un Agent che esegue codice come lo stesso utente macOS; i deployment supportati sono in §7.0. Esito della review EGM (`consolidated_review_report.md`, A1). |
+| 2026-11-13 | Confine di fiducia dichiarato come vincolo di deployment | La policy limita errori e prompt injection, non un Agent che esegue codice come lo stesso utente macOS; i deployment supportati sono in §7.0. Esito della review EGM (report `consolidated_review_report.md`, A1, nel commit `84ec7ab`). |
 | 2026-11-13 | `frix-web` in sola lettura in v1 | Le scritture dalla dashboard richiederebbero autenticazione locale e una seconda Confirmation; il valore della dashboard è la visibilità. Un ADR dedicato riaprirà le scritture web (A2). |
 | 2026-11-13 | Il Level appartiene al tool, non all'azione del router | La stessa azione (`WLANConfiguration:SetEnable`) è W sulla rete Ospiti e D sulle principali; solo il tool sa quale istanza tocca (A3, §6.2). |
 | 2026-11-13 | Nessuno stato condiviso tra processi | Rate limit per processo e audit con append atomico bastano; un daemon aggiungerebbe una superficie da proteggere senza un bisogno dimostrato (A7). |

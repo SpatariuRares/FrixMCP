@@ -5,7 +5,7 @@ members = ["crates/frix-core", "crates/frix-mcp", "crates/frix-web", "xtask"]
 [workspace.package]
 version = "0.1.0"
 edition = "2024"
-license = "MIT OR Apache-2.0"   # vedi docs/PROJECT.md §14.1: da confermare prima di rendere pubblico il repo
+license = "MIT OR Apache-2.0"
 repository = "https://github.com/SpatariuRares/FrixMCP"
 # MSRV: edition 2024 richiede >= 1.85; rmcp 3.10.0 dichiara rust-version 1.88 (verificato sul manifest).
 rust-version = "1.88"
