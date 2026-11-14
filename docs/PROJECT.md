@@ -821,10 +821,10 @@ Ogni uso nel codice va dietro la feature `unstable-ui`, mai nel percorso di defa
 
 Stima di complessità: S (mezza giornata), M (1–2 giorni), L (3–5 giorni), XL (oltre).
 
-| Fase | Stato al 2026-11-13 |
+| Fase | Stato al 2026-11-14 |
 |------|---------------------|
 | 0 — Setup | completata (commit `120f1e3`) |
-| 1 — `frix-core` + `frix-mcp` in sola lettura | codice completato; manca la verifica sul router reale (`docs/guida-operator-fase1.md`, issue #3, #9, #15) |
+| 1 — `frix-core` + `frix-mcp` in sola lettura | completata: verificata sul router reale il 2026-11-14 (issue #3, #9, #15; prove manuali da Claude Code) |
 | 2 — Scritture a basso rischio | da fare |
 | 3 — `frix-web` in sola lettura | da fare |
 | 4 — Dangerous | da fare; parte da uno spike |
@@ -835,7 +835,7 @@ Stima di complessità: S (mezza giornata), M (1–2 giorni), L (3–5 giorni), X
 - Workspace che compila, CI verde, repo GitHub, nessun segreto nel repo.
 - **Accettazione:** `cargo build`, `cargo clippy --all-targets --all-features -- -D warnings`, `cargo deny check`, `cargo test` passano; `git grep` non trova segreti.
 
-### Fase 1 — `frix-core` read-only + `frix-mcp` read-only (L) — codice completato
+### Fase 1 — `frix-core` read-only + `frix-mcp` read-only (L) — completata
 
 1. Trasporto con TLS pinnato e Digest; `discover()` con parsing SCPD; `call()` con fault tipizzati.
 2. `services`: `device_info`, `device_config`, `wan_common`, `wan_dsl`, `wan_connection`, `hosts`, `list_path`, `wlan`, `lan_host_config`, `lan_config_security`, `host_filter` (lettura), `homeauto` (lettura), `time`, `user_interface`.

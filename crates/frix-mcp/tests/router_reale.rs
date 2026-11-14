@@ -164,13 +164,23 @@ async fn get_wifi_status_trova_le_tre_reti_e_la_band_degli_ospiti_dal_canale() {
 }
 
 #[tokio::test]
-async fn list_wifi_clients_legge_i_client_delle_reti_principali() {
+async fn list_wifi_clients_assegna_ogni_client_della_lista_una_volta() {
+    // le tre istanze danno lo stesso path: 14 voci, nessuna ospite (rete Ospiti spenta)
     let d = dati("list_wifi_clients", json!({})).await;
     let clients = d["clients"].as_array().unwrap();
+    assert_eq!(clients.len(), 14);
+    let mut mac: Vec<&str> = clients.iter().map(|c| c["mac"].as_str().unwrap()).collect();
+    mac.sort_unstable();
+    mac.dedup();
+    assert_eq!(mac.len(), 14);
+    assert!(clients.iter().all(|c| c["network"] != "guest"));
+    assert!(clients.iter().any(|c| c["network"] == "main_2g"));
+    assert!(clients.iter().any(|c| c["network"] == "main_5g"));
     assert!(
         clients
             .iter()
-            .any(|c| c["network"] == "main_2g" || c["network"] == "main_5g")
+            .filter(|c| c["network"] == "main_2g")
+            .all(|c| c["band"] == "2.4GHz" && c["channel_width_mhz"].as_u64().unwrap() <= 40)
     );
 }
 
