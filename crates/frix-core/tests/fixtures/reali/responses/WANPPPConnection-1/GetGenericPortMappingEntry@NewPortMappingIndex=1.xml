@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
+<s:Body>
+<u:GetGenericPortMappingEntryResponse xmlns:u="urn:dslforum-org:service:WANPPPConnection:1">
+<NewRemoteHost>0.0.0.0</NewRemoteHost>
+<NewExternalPort>5432</NewExternalPort>
+<NewProtocol>TCP</NewProtocol>
+<NewInternalPort>5432</NewInternalPort>
+<NewInternalClient>192.168.178.144</NewInternalClient>
+<NewEnabled>1</NewEnabled>
+<NewPortMappingDescription>nome-132</NewPortMappingDescription>
+<NewLeaseDuration>0</NewLeaseDuration>
+</u:GetGenericPortMappingEntryResponse>
+</s:Body>
+</s:Envelope>

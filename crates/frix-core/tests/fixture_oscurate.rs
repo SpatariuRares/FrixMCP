@@ -10,6 +10,11 @@ const HOSTNAME_REALE: &str = "rares7590";
 fn file_fixture(dir: &Path, trovati: &mut Vec<PathBuf>) {
     for voce in std::fs::read_dir(dir).expect("cartella fixture") {
         let path = voce.expect("voce").path();
+        // `raw/` è l'uscita locale di `cargo xtask record`, esclusa da git: contiene
+        // apposta le risposte non oscurate.
+        if path.is_dir() && path.file_name().is_some_and(|nome| nome == "raw") {
+            continue;
+        }
         if path.is_dir() {
             file_fixture(&path, trovati);
         } else {

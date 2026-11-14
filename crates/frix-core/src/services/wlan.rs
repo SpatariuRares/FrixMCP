@@ -1,8 +1,10 @@
 //! `WLANConfiguration:1..3`: le Wi-Fi Network del router (docs/PROJECT.md §4.2.3).
 //!
 //! Quale istanza `WLANConfiguration` sia quale Wi-Fi Network non si presume
-//! (docs/PROJECT.md §4.1): lo dicono `X_AVM-DE_APType` e `X_AVM-DE_FrequencyBand`
-//! di `X_AVM-DE_GetWLANExtInfo`, letti a ogni chiamata.
+//! (docs/PROJECT.md §4.1): lo dicono `X_AVM-DE_APType` di `X_AVM-DE_GetWLANExtInfo`
+//! e la Band dell'istanza, letti a ogni chiamata. Il 7590 con FRITZ!OS 8.25 risponde
+//! `unknown` come `X_AVM-DE_FrequencyBand` sulla rete Ospiti (§14.3): la Band si ricava
+//! allora dal canale.
 //!
 //! `GetSecurityKeys` e `X_AVM-DE_GetWLANHybridMode` espongono chiavi Wi-Fi: questo
 //! modulo non le chiama, e la Policy le nega comunque (Level Dangerous).
@@ -95,6 +97,17 @@ impl Band {
             "2400" => Self::Ghz2_4,
             "5000" => Self::Ghz5,
             "6000" => Self::Ghz6,
+            _ => Self::Unknown,
+        }
+    }
+
+    /// La Band di un canale: 1-14 esistono solo a 2,4 GHz, 32-177 solo a 5 GHz.
+    /// Anche i canali a 6 GHz sono numerati da 1, quindi su un router con una radio
+    /// a 6 GHz questa regola non basterebbe; il 7590 non ne ha.
+    fn from_channel(canale: u8) -> Self {
+        match canale {
+            1..=14 => Self::Ghz2_4,
+            32..=177 => Self::Ghz5,
             _ => Self::Unknown,
         }
     }
@@ -313,6 +326,24 @@ fn wifi_client(
     })
 }
 
+/// La Band di un'istanza: `X_AVM-DE_FrequencyBand` di `X_AVM-DE_GetWLANExtInfo`
+/// (`da_ext_info`), poi quello di `GetChannelInfo`, poi il canale. Il 7590 con
+/// FRITZ!OS 8.25 risponde `unknown` in entrambi i campi sull'istanza Ospiti.
+async fn banda(client: &Tr064Client, service: &str, da_ext_info: &str) -> Result<Band, FrixError> {
+    let band = Band::from_router(da_ext_info);
+    if band != Band::Unknown {
+        return Ok(band);
+    }
+    let canale = client.call(service, "GetChannelInfo", &[]).await?;
+    let band = canale
+        .text("NewX_AVM-DE_FrequencyBand")
+        .map_or(Band::Unknown, Band::from_router);
+    if band != Band::Unknown {
+        return Ok(band);
+    }
+    Ok(Band::from_channel(canale.parse("NewChannel")?))
+}
+
 async fn totale_associazioni(client: &Tr064Client, service: &str) -> Result<u16, FrixError> {
     client
         .call(service, "GetTotalAssociations", &[])
@@ -336,7 +367,7 @@ async fn reti_trovate(
         let r = client
             .call(&service, "X_AVM-DE_GetWLANExtInfo", &[])
             .await?;
-        let band = Band::from_router(r.text("NewX_AVM-DE_FrequencyBand")?);
+        let band = banda(client, &service, r.text("NewX_AVM-DE_FrequencyBand")?).await?;
         let network = match (r.text("NewX_AVM-DE_APType")?.trim(), band) {
             ("guest", _) => WifiNetwork::Guest,
             ("normal", Band::Ghz2_4) => WifiNetwork::Main2g,

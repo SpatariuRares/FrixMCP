@@ -1,0 +1,45 @@
+<?xml version="1.0"?>
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
+<s:Body>
+<u:GetInfoResponse xmlns:u="urn:dslforum-org:service:DeviceInfo:1">
+<NewManufacturerName>AVM</NewManufacturerName>
+<NewManufacturerOUI>00040E</NewManufacturerOUI>
+<NewModelName>FRITZ!Box 7590</NewModelName>
+<NewDescription>FRITZ!Box 7590 Release 154.08.25</NewDescription>
+<NewProductClass>FRITZ!Box</NewProductClass>
+<NewSerialNumber>02000000007F</NewSerialNumber>
+<NewSoftwareVersion>154.08.25</NewSoftwareVersion>
+<NewHardwareVersion>FRITZ!Box 7590</NewHardwareVersion>
+<NewSpecVersion>1.0</NewSpecVersion>
+<NewProvisioningCode></NewProvisioningCode>
+<NewUpTime>574146</NewUpTime>
+<NewDeviceLog>14.11.26 13:02:20 Rilevato un malfunzionamento del DNS, la risoluzione del nome viene ora effettuata tramite i server DNS pubblici.
+14.11.26 12:46:50 Malfunzionamento DNS terminato, risoluzione del nome tramite i server DNS pubblici terminata.
+14.11.26 12:29:10 [nome-120] Canale Wi-Fi automatico: il rilevamento attuale dell&apos;ambiente Wi-Fi (2,4 GHz) per ottimizzare i canali Wi-Fi utilizzati è in corso
+14.11.26 08:56:40 Rilevato un malfunzionamento del DNS, la risoluzione del nome viene ora effettuata tramite i server DNS pubblici.
+14.11.26 08:46:50 Malfunzionamento DNS terminato, risoluzione del nome tramite i server DNS pubblici terminata.
+14.11.26 06:29:10 [nome-120] Canale Wi-Fi automatico: il rilevamento attuale dell&apos;ambiente Wi-Fi (2,4 GHz) per ottimizzare i canali Wi-Fi utilizzati è in corso
+14.11.26 04:56:50 Rilevato un malfunzionamento del DNS, la risoluzione del nome viene ora effettuata tramite i server DNS pubblici.
+14.11.26 04:46:12 Malfunzionamento DNS terminato, risoluzione del nome tramite i server DNS pubblici terminata.
+14.11.26 01:51:58 Rilevato un malfunzionamento del DNS, la risoluzione del nome viene ora effettuata tramite i server DNS pubblici.
+14.11.26 00:45:45 Malfunzionamento DNS terminato, risoluzione del nome tramite i server DNS pubblici terminata.
+14.11.26 00:29:10 [nome-120] Canale Wi-Fi automatico: il rilevamento attuale dell&apos;ambiente Wi-Fi (2,4 GHz) per ottimizzare i canali Wi-Fi utilizzati è in corso
+13.11.26 23:11:05 Rilevato un malfunzionamento del DNS, la risoluzione del nome viene ora effettuata tramite i server DNS pubblici.
+13.11.26 20:45:21 Malfunzionamento DNS terminato, risoluzione del nome tramite i server DNS pubblici terminata.
+13.11.26 18:29:10 [nome-120] Canale Wi-Fi automatico: il rilevamento attuale dell&apos;ambiente Wi-Fi (2,4 GHz) per ottimizzare i canali Wi-Fi utilizzati è in corso
+13.11.26 16:55:44 Rilevato un malfunzionamento del DNS, la risoluzione del nome viene ora effettuata tramite i server DNS pubblici.
+13.11.26 16:45:18 Malfunzionamento DNS terminato, risoluzione del nome tramite i server DNS pubblici terminata.
+13.11.26 12:50:27 Rilevato un malfunzionamento del DNS, la risoluzione del nome viene ora effettuata tramite i server DNS pubblici.
+13.11.26 12:45:27 Malfunzionamento DNS terminato, risoluzione del nome tramite i server DNS pubblici terminata.
+13.11.26 12:29:10 [nome-120] Canale Wi-Fi automatico: il rilevamento attuale dell&apos;ambiente Wi-Fi (2,4 GHz) per ottimizzare i canali Wi-Fi utilizzati è in corso
+13.11.26 09:00:01 Rilevato un malfunzionamento del DNS, la risoluzione del nome viene ora effettuata tramite i server DNS pubblici.
+13.11.26 08:45:50 Malfunzionamento DNS terminato, risoluzione del nome tramite i server DNS pubblici terminata.
+13.11.26 08:45:00 Rilevato un malfunzionamento del DNS, la risoluzione del nome viene ora effettuata tramite i server DNS pubblici.
+13.11.26 06:29:10 [nome-120] Canale Wi-Fi automatico: il rilevamento attuale dell&apos;ambiente Wi-Fi (2,4 GHz) per ottimizzare i canali Wi-Fi utilizzati è in corso
+13.11.26 00:29:10 [nome-120] Canale Wi-Fi automatico: il rilevamento attuale dell&apos;ambiente Wi-Fi (2,4 GHz) per ottimizzare i canali Wi-Fi utilizzati è in corso
+12.11.26 19:17:53 Malfunzionamento DNS terminato, risoluzione del nome tramite i server DNS pubblici terminata.
+12.11.26 18:29:10 [nome-120] Canale Wi-Fi automatico: il rilevamento attuale dell&apos;ambiente Wi-Fi (2,4 GHz) per ottimizzare i canali Wi-Fi utilizzati è in corso
+12.11.26 17:28:14 Rilevato un malfunzionamento del DNS, la risoluzione del nome viene ora effettuata tramite i server DNS pubblici.</NewDeviceLog>
+</u:GetInfoResponse>
+</s:Body>
+</s:Envelope>

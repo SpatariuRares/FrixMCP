@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
+<s:Body>
+<u:GetChannelInfoResponse xmlns:u="urn:dslforum-org:service:WLANConfiguration:2">
+<NewChannel>44</NewChannel>
+<NewPossibleChannels>36,40,44,48,52,56,60,64,100,104,108,112,116,120,124,128,132,136,140</NewPossibleChannels>
+<NewX_AVM-DE_AutoChannelEnabled>1</NewX_AVM-DE_AutoChannelEnabled>
+<NewX_AVM-DE_FrequencyBand>5000</NewX_AVM-DE_FrequencyBand>
+</u:GetChannelInfoResponse>
+</s:Body>
+</s:Envelope>

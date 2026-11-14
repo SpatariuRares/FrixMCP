@@ -207,7 +207,7 @@ Mappatura `serviceType` → `controlURL` [VERIFICATO]:
 | WANPPPConnection:1 | `/upnp/control/wanpppconn1` | `/wanpppconnSCPD.xml` |
 | WANIPConnection:1 | `/upnp/control/wanipconnection1` | `/wanipconnSCPD.xml` |
 
-Nota: l'assegnazione "1 = 2,4 GHz, 2 = 5 GHz, 3 = ospiti" è la convenzione AVM per i modelli dual-band; **[DA VERIFICARE]** con `GetInfo` su ciascuna istanza (campo `NewX_AVM-DE_FrequencyBand` e `NewSSID`) appena ci sono credenziali. Il 7590 ha una sola radio 5 GHz, quindi tre istanze tornano.
+Nota: l'assegnazione "1 = 2,4 GHz, 2 = 5 GHz, 3 = ospiti" è la convenzione AVM per i modelli dual-band. **[VERIFICATO]** sul 7590 con FRITZ!OS 8.25 (§14.3): l'istanza 1 risponde `FrequencyBand` 2400, la 2 risponde 5000, la 3 è la rete Ospiti (`APType` guest) e risponde `unknown`. Il codice non presume comunque l'assegnazione (§4.1).
 
 ### 4.2 Servizi principali — azioni reali con livello di rischio
 
@@ -302,7 +302,7 @@ Scopo: salute della linea DSL.
 | `X_AVM-DE_GetDSLInfo` → SNR, LATN, FEC/CRC, LinkStatus, ModulationType, CurrentProfile, … | - | R | senza autenticazione! |
 | `X_AVM-DE_GetDSLDiagnoseInfo` → DSLDiagnoseState, CableNokDistance, DSLLastDiagnoseTime, DSLSignalLossTime, DSLActive, DSLSync | - | R | |
 
-Nota: se la connessione fosse via fibra/cavo invece che DSL, questi valori sarebbero vuoti. **[DA VERIFICARE]** il tipo di WAN con `GetCommonLinkProperties.WANAccessType`.
+Nota: se la connessione fosse via fibra/cavo invece che DSL, questi valori sarebbero vuoti. **[VERIFICATO]** (§14.3): il 7590 di riferimento ha `WANAccessType` Ethernet, quindi la linea DSL risulta spenta.
 
 #### 4.2.6 WANPPPConnection / WANIPConnection — priorità ALTA (lettura), fase 1/4 [VERIFICATO]
 
@@ -322,7 +322,7 @@ Scopo: stato della connessione Internet, IP pubblico, port forwarding.
 | `SetConnectionType`, `SetConnectionTrigger`, `SetIdleDisconnectTime`, `SetRouteProtocolRx`, `X_AVM-DE_SetAutoDisconnectTimeSpan` | C | D | |
 | `SetUserName`, `SetPassword` (PPP) | C | X | credenziali del provider: escluse. |
 
-Quale dei due servizi è attivo dipende dal tipo di connessione (PPPoE → WANPPPConnection; IP diretto → WANIPConnection). `Layer3Forwarding:GetDefaultConnectionService` lo dice. **[DA VERIFICARE]** sul router.
+Quale dei due servizi è attivo dipende dal tipo di connessione (PPPoE → WANPPPConnection; IP diretto → WANIPConnection). `Layer3Forwarding:GetDefaultConnectionService` lo dice. **[VERIFICATO]** (§14.3): sul 7590 di riferimento risponde `1.WANPPPConnection.1`.
 
 #### 4.2.7 X_AVM-DE_HostFilter — priorità ALTA, fase 2 [VERIFICATO]
 
@@ -458,7 +458,7 @@ Gli argomenti di ingresso vanno come elementi figli (`<NewMACAddress>AA:BB:…</
 | 820 | Internal Error |
 | 866 / 867 / 868 | serve il secondo fattore / 2FA bloccata / 2FA occupata |
 
-**Autenticazione.** Default: **HTTP Digest** (RFC 2617, MD5) con il nome utente e la password dell'utente FRITZ!OS. Il flusso è il classico: prima richiesta senza `Authorization` → `401` con `WWW-Authenticate: Digest realm=…, nonce=…, qop=…` → seconda richiesta con `Authorization: Digest …`. Il documento non specifica `qop`/`algorithm`; **[DA VERIFICARE]** sul router reale con `curl -v --digest` (la prima volta con credenziali, dopo aver creato l'utente). Alternativa documentata: *Content Level Authentication* (header SOAP `<h:InitChallenge>` / `<h:ClientAuth>` nel namespace `http://soap-authentication.org/digest/2001/10/`, realm fisso `F!Box SOAP-Auth`, `secret = MD5(uid:realm:pwd)`, `response = MD5(secret:nonce)`). Non la useremo: Digest HTTP è più standard e più facile da fare bene.
+**Autenticazione.** Default: **HTTP Digest** (RFC 2617, MD5) con il nome utente e la password dell'utente FRITZ!OS. Il flusso è il classico: prima richiesta senza `Authorization` → `401` con `WWW-Authenticate: Digest realm=…, nonce=…, qop=…` → seconda richiesta con `Authorization: Digest …`. Il documento non specifica `qop`/`algorithm`; **[VERIFICATO]** sul 7590 (§14.3): `algorithm=MD5`, `qop=auth`, nessun `opaque`. Alternativa documentata: *Content Level Authentication* (header SOAP `<h:InitChallenge>` / `<h:ClientAuth>` nel namespace `http://soap-authentication.org/digest/2001/10/`, realm fisso `F!Box SOAP-Auth`, `secret = MD5(uid:realm:pwd)`, `response = MD5(secret:nonce)`). Non la useremo: Digest HTTP è più standard e più facile da fare bene.
 
 **TLS.** La porta HTTPS va letta con `DeviceInfo:GetSecurityPort` (nessuna autenticazione). Il certificato è autofirmato da AVM; vedi §7.4 per il pinning. Decisione: in v1 **tutto il traffico autenticato passa su HTTPS 49443**; HTTP 49000 si usa solo per `tr64desc.xml`, gli SCPD e `GetSecurityPort`.
 
@@ -479,7 +479,7 @@ Riaprire uno di questi punti richiede una riga nella tabella delle decisioni (§
 
 Le azioni `X_AVM-DE_GetHostListPath`, `X_AVM-DE_GetMeshListPath`, `X_AVM-DE_GetWLANDeviceListPath`, `GetDectListPath`, `GetCallList`, `GetPhonebook`, `X_AVM-DE_GetDeviceLogPath` restituiscono un **path relativo a uno script Lua** da richiedere con `GET` sulla stessa porta TR-064. Il formato della lista host è documentato (XML `<List><Item>…</Item></List>` con gli stessi campi di `GetSpecificHostEntryByIP`); la mesh è JSON con schema ufficiale `Mesh-Topology_Schema_v8.7.json`.
 
-**[DA VERIFICARE]** sul router: se il path restituito contiene già `?sid=…` (comportamento osservato dalla community e da fritzconnection) o se bisogna aggiungerlo prendendo il SID da `DeviceConfig:X_AVM-DE_CreateUrlSID`. Il piano: provare prima il path così com'è su `https://192.168.178.1:49443<path>`, poi con `&sid=` da `CreateUrlSID`.
+**[VERIFICATO]** (§14.3): il path restituito contiene già `?sid=…` (per esempio `/devicehostlist.lua?sid=…`), quindi si legge così com'è su `https://192.168.178.1:49443<path>` senza `CreateUrlSID`.
 
 ---
 
@@ -677,7 +677,7 @@ Procedura (Fase 0/1, passi operativi in `docs/guida-operator-fase1.md`):
 
 1. Leggere l'impronta: `openssl s_client -connect 192.168.178.1:49443 </dev/null 2>/dev/null | openssl x509 -noout -fingerprint -sha256` (solo lettura, nessuna autenticazione). Salvare anche il certificato DER: `… | openssl x509 -outform DER > ~/.config/frixmcp/router.der` (fuori dal repo).
 2. In `config.toml`: `tls.pinned_sha256 = "AB:CD:…"` oppure `tls.ca_file = "router.der"`.
-3. In `transport::tls`: con `mode = "pin"` (default) un `ServerCertVerifier` di `rustls` accetta **solo** il certificato la cui impronta SHA-256 coincide con quella configurata (ignora nome host e catena, perché l'IP potrebbe non essere nel SAN **[DA VERIFICARE]**); con `mode = "ca"` il certificato configurato diventa l'unica root e si usa la verifica standard. Entrambe le modalità sono implementate (`config.rs`, `--tls-mode`).
+3. In `transport::tls`: con `mode = "pin"` (default) un `ServerCertVerifier` di `rustls` accetta **solo** il certificato la cui impronta SHA-256 coincide con quella configurata (ignora nome host e catena, perché l'IP non è nel SAN: **[VERIFICATO]**, §14.3); con `mode = "ca"` il certificato configurato diventa l'unica root e si usa la verifica standard. Entrambe le modalità sono implementate (`config.rs`, `--tls-mode`).
 4. Quando il router rigenera il certificato (reset, aggiornamento del firmware, attivazione Let's Encrypt), FrixMCP fallisce con un errore chiaro che riporta impronta attesa e trovata: mai fallback silenzioso a HTTP. Per questo l'applicazione del firmware non è un tool in v1 (§8.3): richiederebbe di aggiornare il pin.
 5. Nessuna opzione disattiva la verifica: esiste solo `tls.mode = "pin" | "ca"`, e un test lo verifica.
 6. Il pin copre solo la porta TR-064 (49443). La porta HTTPS della UI (443) non è usata in v1; servirà un pin proprio quando si riaprirà il SID (§5.2).
@@ -736,7 +736,7 @@ Procedura (Fase 0/1, passi operativi in `docs/guida-operator-fase1.md`):
 | `set_filter_profile` | assegna un profilo di filtro | `mac`, `profile_id` | X_AVM-DE_HostFilter:AddHostEntryToFilterProfile | Reversible | rifiuta se `mac` è del Control Host | profilo validato contro `GetFilterProfiles` |
 | `add_ticket_time` | aggiunge tempo online | `mac` | X_AVM-DE_HostFilter:AddTicketTimeToHostEntryByIP | Irreversible | nessun rischio (aggiunge accesso) | il tempo concesso non si può togliere |
 | `set_host_priority` | priorità realtime | `mac`, `enabled` | Hosts:X_AVM-DE_SetPrioritizationByIP | Reversible | nessun rischio | |
-| `set_guest_wifi` | accende/spegne la Wi-Fi Network Ospiti | `enabled` | WLANConfiguration, istanza Ospiti: SetEnable | Reversible | rifiuta lo spegnimento se il Control Host è connesso agli Ospiti | l'istanza è fissata nel tool; prima di scrivere, `GetInfo` conferma che è la rete Ospiti, altrimenti rifiuta. Quale istanza sia è **[DA VERIFICARE]** (§14.3) |
+| `set_guest_wifi` | accende/spegne la Wi-Fi Network Ospiti | `enabled` | WLANConfiguration, istanza Ospiti: SetEnable | Reversible | rifiuta lo spegnimento se il Control Host è connesso agli Ospiti | l'istanza è fissata nel tool; prima di scrivere, `GetInfo` conferma che è la rete Ospiti, altrimenti rifiuta. Sul 7590 di riferimento è l'istanza 3 (§14.3), ma il tool la conferma comunque con `GetInfo` |
 | `set_smarthome_switch` | accende/spegne una presa | `ain`, `on: bool` | X_AVM-DE_Homeauto:SetSwitch | Reversible | nessun rischio | AIN validato con GetInfo |
 | `rename_smarthome_device` | rinomina uno SmartHome Device | `ain`, `name` | X_AVM-DE_Homeauto:SetDeviceName | Reversible | nessun rischio | |
 | `check_firmware_update` | chiede al router di controllare se c'è un aggiornamento | — | UserInterface:X_AVM-DE_CheckUpdate | non applicabile: non cambia la configurazione | nessun rischio | non applica nulla |
@@ -999,18 +999,22 @@ Matrice macOS + Linux; azioni pinnate a commit; toolchain da `rust-toolchain.tom
 
 ### 14.3 Cose da verificare sul router (prima riga di codice che le usa)
 
-- [ ] Parametri Digest (`qop`, `algorithm`, `opaque`) della risposta 401 del 7590.
-- [ ] Come il 7590 segnala un blocco dopo Digest falliti sul TR-064 (401 senza sfida, 503, `Retry-After`, altro). `BlockTime` appartiene al login SID (§5.2), non al Digest. Comportamento attuale di `transport/router.rs`: una password rifiutata non si ritenta finché il processo vive; un 503 si ripete poche volte rispettando `Retry-After`.
-- [ ] Se i path di `X_AVM-DE_Get*ListPath` includono già `sid` o serve `CreateUrlSID`.
-- [ ] Nomi dei campi della lista di `X_AVM-DE_GetWLANDeviceListPath`: `frix-core` presume quelli di `GetGenericAssociatedDeviceInfo` senza `New` (fixture scritta a mano `lists/wlandevicelist.xml`); se non tornano, `list_wifi_clients` ripiega sulla lettura per indice.
-- [ ] Quale istanza `WLANConfiguration` è quale (2,4 / 5 / Ospiti): **blocca la Fase 2**, perché `set_guest_wifi` fissa l'istanza Ospiti nel codice (§8.2). Si legge con `get_wifi_status` (`FrequencyBand`, `SSID`, `X_AVM-DE_GetWLANExtInfo.APType`).
-- [ ] `WANAccessType` e quale fra WANPPPConnection/WANIPConnection è attivo.
-- [ ] SAN del certificato autofirmato (IP presente?).
+Verificate il 2026-11-14 sul FRITZ!Box 7590 di riferimento (FRITZ!OS 8.25, firmware `154.08.25`) con il test live e con `cargo xtask record`; le risposte oscurate sono in `crates/frix-core/tests/fixtures/reali/` e `crates/frix-mcp/tests/router_reale.rs` le usa (#15).
+
+- [x] Parametri Digest della risposta 401: `algorithm=MD5`, `qop=auth`, nessun `opaque`.
+- [ ] Come il 7590 segnala un blocco dopo Digest falliti sul TR-064 (401 senza sfida, 503, `Retry-After`, altro). `BlockTime` appartiene al login SID (§5.2), non al Digest. Comportamento attuale di `transport/router.rs`: una password rifiutata non si ritenta finché il processo vive; un 503 si ripete poche volte rispettando `Retry-After`. Non provato apposta: richiederebbe di far fallire il login più volte.
+- [x] I path di `X_AVM-DE_Get*ListPath` includono già `?sid=…`: non serve `CreateUrlSID`.
+- [x] Lista di `X_AVM-DE_GetWLANDeviceListPath`: i campi sono quelli di `GetGenericAssociatedDeviceInfo` senza `New` (`AssociatedDeviceMACAddress`, `AssociatedDeviceIPAddress`, …) più `X_AVM-DE_Speed`, `X_AVM-DE_SignalStrength`, `AssociatedDeviceChannel`, `X_AVM-DE_ChannelWidth`, `AssociatedDeviceGuest`. Tutte e tre le istanze restituiscono lo stesso path, con i client di tutte le reti.
+- [x] Istanze `WLANConfiguration`: 1 = 2,4 GHz (`FrequencyBand` 2400), 2 = 5 GHz (5000), 3 = Ospiti (`APType` guest). La 3 risponde `FrequencyBand` `unknown` sia in `X_AVM-DE_GetWLANExtInfo` sia in `GetChannelInfo`: `frix-core` ricava allora la Band dal canale (1–14 → 2,4 GHz, 32–177 → 5 GHz). Sblocca la Fase 2 per `set_guest_wifi` (§8.2), che conferma comunque l'istanza con `GetInfo` prima di scrivere.
+- [x] Connessione: `WANAccessType` Ethernet (nessuna linea DSL), servizio attivo `WANPPPConnection` (`GetDefaultConnectionService` → `1.WANPPPConnection.1`).
+- [x] SAN del certificato autofirmato: solo nomi DNS, nessun IP. Il pin per impronta (§7.5) è quindi la modalità giusta.
 - [ ] Nomi esatti dei menu in italiano su FRITZ!OS 8.25 (aggiornare `docs/guida-operator-fase1.md`).
+- [x] Diritti del Router Account: con il solo "Impostazioni FRITZ!Box" spuntato, `X_AVM-DE_GetCurrentUser` riporta `readwrite` anche su Phone, Dial, HomeAuto e App, e `none` su NAS. FRITZ!OS li concede da sé: non si possono togliere lasciando "Impostazioni FRITZ!Box". FrixMCP non ha tool che li usano (§8.1); la Policy resta l'unico limite.
 - [ ] Il diritto "App" da solo: quante letture copre davvero (per un eventuale secondo Router Account della dashboard).
-- [ ] Formato reale del JSON mesh del 7590 rispetto allo schema v8.7.
-- [ ] Comportamento di `X_AVM-DE_GetOnlineMonitor`: quanti campioni, che intervallo.
-- [ ] rmcp 3.10: API delle annotazioni dei tool, come passare `instructions` al client (MSRV 1.88 verificata sul manifest).
+- [x] JSON mesh del 7590: `get_mesh_topology` legge la lista reale (nodi e link) con il parser scritto sullo schema v8.7.
+- [x] `X_AVM-DE_GetOnlineMonitor`: un solo sync group (`sync_ata`, modo ATA), 20 campioni per serie. L'intervallo fra i campioni non è nella risposta.
+- [x] Smart Home senza dispositivi: `GetGenericDeviceInfos` risponde HTTP 500 con fault 713 già all'indice 0; `list_smarthome_devices` restituisce una lista vuota.
+- [x] rmcp 3.10: annotazioni con `#[tool(annotations(read_only_hint = true, …))]`, `instructions` in `#[tool_handler(instructions = …)]` (`crates/frix-mcp/src/server.rs`); MSRV 1.88 verificata sul manifest.
 
 ---
 
