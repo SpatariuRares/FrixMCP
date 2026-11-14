@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
+<s:Body>
+<u:X_AVM-DE_GetOnlineMonitorResponse xmlns:u="urn:dslforum-org:service:WANCommonInterfaceConfig:1">
+<NewTotalNumberSyncGroups>1</NewTotalNumberSyncGroups>
+<NewSyncGroupName>sync_ata</NewSyncGroupName>
+<NewSyncGroupMode>ATA</NewSyncGroupMode>
+<Newmax_ds>126308983</Newmax_ds>
+<Newmax_us>77383130</Newmax_us>
+<Newds_current_bps>255549,288881,12206,23445889,32339786,33861562,65553908,30234015,23332,1747151,225436,1910363,914693,23957,1391728,213853,24881,2781578,348444,1455344</Newds_current_bps>
+<Newmc_current_bps>0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0</Newmc_current_bps>
+<Newus_current_bps>54228,24788,14063,956967,1505657,1508951,2779869,1421092,7767,23698,13167,45238,19342,11782,33135,21191,6078,36720,19203,22637</Newus_current_bps>
+<Newprio_realtime_bps>54213,24757,14048,956952,1505657,1508936,2779768,1421067,7752,23667,13152,45219,19264,11689,33104,21176,6047,36720,19188,22637</Newprio_realtime_bps>
+<Newprio_high_bps>0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0</Newprio_high_bps>
+<Newprio_default_bps>15,31,15,15,0,15,101,25,15,31,15,19,78,93,31,15,31,0,15,0</Newprio_default_bps>
+<Newprio_low_bps>0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0</Newprio_low_bps>
+</u:X_AVM-DE_GetOnlineMonitorResponse>
+</s:Body>
+</s:Envelope>

@@ -75,6 +75,14 @@ const CAMPI: &[(&str, Categoria)] = &[
     ("NewPrefix", Categoria::IpPubblico),
 ];
 
+/// Campi con una lista di IP separati da virgole: si oscurano i soli IP pubblici
+/// (i DNS del provider dicono chi è l'operatore; quelli della LAN restano).
+const CAMPI_LISTA_IP: &[&str] = &["NewDNSServers"];
+
+/// Valori che il router mette al posto di un nome mancante: non identificano nessuno,
+/// e sostituirli come sottostringa cambierebbe campi che non c'entrano (`<access>none`).
+const SEGNAPOSTO: &[&str] = &["none", "unknown"];
+
 /// Lunghezza minima (in caratteri) per sostituire un valore anche dentro un testo libero.
 pub const MIN_SOTTOSTRINGA: usize = 4;
 
@@ -161,11 +169,29 @@ impl Oscuratore {
                 .entry(sid.to_owned())
                 .or_insert((Categoria::Sid, SID_FISSO.to_owned()));
         }
+        if CAMPI_LISTA_IP.contains(&campo) {
+            for ip in testo.split(',').map(str::trim) {
+                if ip
+                    .parse::<std::net::IpAddr>()
+                    .is_ok_and(|ip| !ip_locale(ip))
+                {
+                    self.registra(Categoria::IpPubblico, ip);
+                }
+            }
+            return;
+        }
         let Some(categoria) = categoria_del_campo(campo) else {
             return;
         };
+        self.registra(categoria, testo);
+    }
+
+    fn registra(&mut self, categoria: Categoria, testo: &str) {
         let valore = testo.trim();
-        if valore.is_empty() || self.valori.contains_key(valore) {
+        if valore.is_empty()
+            || SEGNAPOSTO.contains(&valore.to_lowercase().as_str())
+            || self.valori.contains_key(valore)
+        {
             return;
         }
         // il seriale del 7590 è il MAC senza separatori: stesso sostituto del MAC
@@ -284,6 +310,22 @@ impl Oscuratore {
             )));
         }
         Ok(())
+    }
+}
+
+/// IP della rete di casa o non instradabile: non identifica nessuno fuori dalla LAN.
+fn ip_locale(ip: std::net::IpAddr) -> bool {
+    match ip {
+        std::net::IpAddr::V4(v4) => {
+            v4.is_private() || v4.is_loopback() || v4.is_link_local() || v4.is_unspecified()
+        }
+        std::net::IpAddr::V6(v6) => {
+            let primo = v6.segments().first().copied().unwrap_or(0);
+            v6.is_loopback()
+                || v6.is_unspecified()
+                || (primo & 0xfe00) == 0xfc00
+                || (primo & 0xffc0) == 0xfe80
+        }
     }
 }
 

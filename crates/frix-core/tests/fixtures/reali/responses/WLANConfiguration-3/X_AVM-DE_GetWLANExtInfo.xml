@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
+<s:Body>
+<u:X_AVM-DE_GetWLANExtInfoResponse xmlns:u="urn:dslforum-org:service:WLANConfiguration:3">
+<NewX_AVM-DE_APEnabled>0</NewX_AVM-DE_APEnabled>
+<NewX_AVM-DE_APType>guest</NewX_AVM-DE_APType>
+<NewX_AVM-DE_FrequencyBand>unknown</NewX_AVM-DE_FrequencyBand>
+<NewX_AVM-DE_TimeoutActive>0</NewX_AVM-DE_TimeoutActive>
+<NewX_AVM-DE_Timeout>30</NewX_AVM-DE_Timeout>
+<NewX_AVM-DE_TimeRemain>0</NewX_AVM-DE_TimeRemain>
+<NewX_AVM-DE_NoForcedOff>0</NewX_AVM-DE_NoForcedOff>
+<NewX_AVM-DE_UserIsolation>1</NewX_AVM-DE_UserIsolation>
+<NewX_AVM-DE_EncryptionMode>3</NewX_AVM-DE_EncryptionMode>
+<NewX_AVM-DE_LastChangedStamp>0</NewX_AVM-DE_LastChangedStamp>
+</u:X_AVM-DE_GetWLANExtInfoResponse>
+</s:Body>
+</s:Envelope>

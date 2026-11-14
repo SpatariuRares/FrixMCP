@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
+<s:Body>
+<u:GetInfoResponse xmlns:u="urn:dslforum-org:service:LANHostConfigManagement:1">
+<NewDHCPServerConfigurable>1</NewDHCPServerConfigurable>
+<NewDHCPRelay>0</NewDHCPRelay>
+<NewMinAddress>192.168.178.20</NewMinAddress>
+<NewMaxAddress>192.168.178.200</NewMaxAddress>
+<NewReservedAddresses></NewReservedAddresses>
+<NewDHCPServerEnable>1</NewDHCPServerEnable>
+<NewDNSServers>192.168.178.1</NewDNSServers>
+<NewDomainName>nome-111</NewDomainName>
+<NewIPRouters>192.168.178.1</NewIPRouters>
+<NewSubnetMask>255.255.255.0</NewSubnetMask>
+</u:GetInfoResponse>
+</s:Body>
+</s:Envelope>

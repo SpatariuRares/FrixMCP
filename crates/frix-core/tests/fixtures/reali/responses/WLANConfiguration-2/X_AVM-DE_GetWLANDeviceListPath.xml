@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
+<s:Body>
+<u:X_AVM-DE_GetWLANDeviceListPathResponse xmlns:u="urn:dslforum-org:service:WLANConfiguration:2">
+<NewX_AVM-DE_WLANDeviceListPath>/wlandevicelist.lua?sid=0123456789abcdef</NewX_AVM-DE_WLANDeviceListPath>
+</u:X_AVM-DE_GetWLANDeviceListPathResponse>
+</s:Body>
+</s:Envelope>

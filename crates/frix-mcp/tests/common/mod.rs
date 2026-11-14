@@ -55,6 +55,31 @@ pub fn transport_7590() -> FixtureTransport {
         .expect("risposte fixture")
 }
 
+/// SID con cui `cargo xtask record` sostituisce quello reale nei path delle liste.
+pub const SID_FIXTURE: &str = "0123456789abcdef";
+
+/// Transport a fixture con le risposte reali oscurate del 7590 (`fixtures/reali/`,
+/// registrate con `cargo xtask record`) e le liste servite ai path che quelle
+/// risposte restituiscono (`/<nome>.lua?sid=…`).
+pub fn transport_reale() -> FixtureTransport {
+    let reali = fixture_dir().join("reali");
+    let mut transport = FixtureTransport::new()
+        .with_descriptions_dir(&fixture_dir().join("scpd"))
+        .expect("SCPD fixture")
+        .with_responses_dir(&reali.join("responses"))
+        .expect("risposte reali");
+    for voce in std::fs::read_dir(reali.join("lists")).expect("liste reali") {
+        let file = voce.expect("voce").path();
+        let nome = file
+            .file_stem()
+            .and_then(|n| n.to_str())
+            .expect("nome lista");
+        let corpo = std::fs::read_to_string(&file).expect("lista reale");
+        transport = transport.with_file(&format!("/{nome}.lua?sid={SID_FIXTURE}"), corpo);
+    }
+    transport
+}
+
 /// Corpo di un fault `UPnP` nel formato AVM (HTTP 500).
 pub fn fault(codice: u16, descrizione: &str) -> HttpResponse {
     HttpResponse {

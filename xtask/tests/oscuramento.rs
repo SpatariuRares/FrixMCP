@@ -257,3 +257,68 @@ fn i_commenti_xml_si_oscurano_come_il_testo() {
     assert!(!oscurati[0].contains(HOSTNAME), "{}", oscurati[0]);
     xml_valido(&oscurati[0]);
 }
+
+#[test]
+fn i_dns_del_provider_si_oscurano_e_quelli_della_lan_restano() {
+    let dns = |servizio: &str, valore: &str| {
+        format!(
+            r#"<?xml version="1.0"?>
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
+<s:Body>
+<u:GetInfoResponse xmlns:u="urn:dslforum-org:service:{servizio}:1">
+<NewDNSServers>{valore}</NewDNSServers>
+</u:GetInfoResponse>
+</s:Body>
+</s:Envelope>
+"#
+        )
+    };
+    let documenti = [
+        dns("WANPPPConnection", "87.12.0.70, 87.12.4.70"),
+        dns("LANHostConfigManagement", "192.168.178.1"),
+    ];
+
+    let oscurati = oscura(&documenti).unwrap();
+
+    for originale in ["87.12.0.70", "87.12.4.70"] {
+        assert!(!oscurati[0].contains(originale), "{originale} sopravvive");
+    }
+    let wan = oscurati[0]
+        .split("<NewDNSServers>")
+        .nth(1)
+        .and_then(|resto| resto.split('<').next())
+        .unwrap();
+    assert_eq!(wan.split(',').count(), 2, "{wan}");
+    assert!(oscurati[1].contains("<NewDNSServers>192.168.178.1</NewDNSServers>"));
+}
+
+#[test]
+fn un_host_chiamato_none_non_cambia_gli_altri_none() {
+    let lista = r#"<?xml version="1.0" encoding="utf-8"?>
+<List>
+<Item><Index>1</Index><IPAddress>192.168.178.21</IPAddress><MACAddress>02:11:22:33:44:56</MACAddress><HostName>none</HostName><Active>1</Active></Item>
+</List>
+"#;
+    let diritti = r#"<?xml version="1.0"?>
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
+<s:Body>
+<u:X_AVM-DE_GetCurrentUserResponse xmlns:u="urn:dslforum-org:service:LANConfigSecurity:1">
+<NewX_AVM-DE_CurrentUserRights>&lt;rights&gt;&lt;path&gt;NAS&lt;/path&gt;&lt;access&gt;none&lt;/access&gt;&lt;/rights&gt;</NewX_AVM-DE_CurrentUserRights>
+</u:X_AVM-DE_GetCurrentUserResponse>
+</s:Body>
+</s:Envelope>
+"#;
+
+    let oscurati = oscura(&[lista.to_owned(), diritti.to_owned()]).unwrap();
+
+    assert!(
+        oscurati[0].contains("<HostName>none</HostName>"),
+        "{}",
+        oscurati[0]
+    );
+    assert!(
+        oscurati[1].contains("&lt;access&gt;none&lt;"),
+        "{}",
+        oscurati[1]
+    );
+}
