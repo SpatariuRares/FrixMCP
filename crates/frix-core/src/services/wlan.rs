@@ -229,27 +229,69 @@ pub async fn status(
 
 /// I client associati alle Wi-Fi Network richieste.
 ///
-/// Per ogni Wi-Fi Network, prima `X_AVM-DE_GetWLANDeviceListPath` e `GET` della lista
-/// (una chiamata per tutti i client); se fallisce, `GetTotalAssociations` e
-/// `GetGenericAssociatedDeviceInfo` per ogni indice (§8.1). Se falliscono entrambe,
-/// l'errore è quello della lista.
+/// Prima `X_AVM-DE_GetWLANDeviceListPath` e `GET` della lista (una chiamata per tutti
+/// i client). Il 7590 dà a ogni istanza lo stesso path, con i client di tutte le Wi-Fi
+/// Network (§14.3): la lista si legge una volta sola e ogni voce va alla Wi-Fi Network
+/// indicata da `AssociatedDeviceGuest` e `AssociatedDeviceChannel`. Se la lista
+/// fallisce, `GetTotalAssociations` e `GetGenericAssociatedDeviceInfo` per ogni indice
+/// di ogni istanza (§8.1); se falliscono entrambe, l'errore è quello della lista.
 pub async fn clients(
     client: &Tr064Client,
     networks: &[WifiNetwork],
 ) -> Result<Vec<WifiClient>, FrixError> {
+    let reti = reti_trovate(client, networks).await?;
+    let Some(prima) = reti.first() else {
+        return Ok(Vec::new());
+    };
     let mut risultato = Vec::new();
-    for rete in reti_trovate(client, networks).await? {
-        let voci = match voci_da_lista(client, &rete.service).await {
-            Ok(voci) => voci,
-            Err(errore) => voci_per_indice(client, &rete.service)
-                .await
-                .map_err(|_| errore)?,
-        };
-        for voce in &voci {
-            risultato.push(wifi_client(&rete, voce)?);
+    match voci_da_lista(client, &prima.service).await {
+        Ok(voci) => {
+            for voce in &voci {
+                if let Some(rete) = rete_della_voce(&reti, voce)? {
+                    risultato.push(wifi_client(rete, voce)?);
+                }
+            }
+            risultato.sort_by_key(|c| c.network);
+        }
+        Err(errore) => {
+            for rete in &reti {
+                let voci = voci_per_indice(client, &rete.service)
+                    .await
+                    .map_err(|_| errore.clone())?;
+                for voce in &voci {
+                    risultato.push(wifi_client(rete, voce)?);
+                }
+            }
         }
     }
     Ok(risultato)
+}
+
+/// La Wi-Fi Network richiesta di una voce della lista: Ospiti se `AssociatedDeviceGuest`
+/// è 1, altrimenti la principale della Band di `AssociatedDeviceChannel`. `None` se la
+/// Wi-Fi Network non è fra quelle richieste o il canale non dice la Band.
+fn rete_della_voce<'a>(
+    reti: &'a [ReteTrovata],
+    voce: &BTreeMap<String, String>,
+) -> Result<Option<&'a ReteTrovata>, FrixError> {
+    let campo = |nome: &str| {
+        voce.get(nome)
+            .map(|t| t.trim())
+            .ok_or_else(|| FrixError::Parse(format!("client Wi-Fi senza {nome}")))
+    };
+    let network = if campo("AssociatedDeviceGuest")? == "1" {
+        WifiNetwork::Guest
+    } else {
+        let canale = campo("AssociatedDeviceChannel")?.parse().map_err(|_| {
+            FrixError::Parse("valore non valido per AssociatedDeviceChannel".into())
+        })?;
+        match Band::from_channel(canale) {
+            Band::Ghz2_4 => WifiNetwork::Main2g,
+            Band::Ghz5 => WifiNetwork::Main5g,
+            _ => return Ok(None),
+        }
+    };
+    Ok(reti.iter().find(|r| r.network == network))
 }
 
 /// I campi di un client, con i nomi delle voci della lista (gli argomenti di

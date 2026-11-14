@@ -9,7 +9,7 @@
 
 mod common;
 
-use frix_core::transport::HttpResponse;
+use frix_core::transport::{FixtureTransport, HttpResponse};
 use serde_json::json;
 
 #[tokio::test]
@@ -335,8 +335,66 @@ async fn un_parametro_sconosciuto_e_rifiutato_e_non_vale_all() {
     assert!(registro.soap().is_empty(), "{:?}", registro.soap());
 }
 
-/// Path della lista dei client Wi-Fi di `WLANConfiguration:1`, SID incluso.
+/// Path della lista dei client Wi-Fi, SID incluso.
 const WLAN_LIST: &str = "/wlandevicelist.lua?sid=0123456789abcdef";
+
+/// Transport con la lista dei client Wi-Fi allo stesso path per tutte e tre le istanze,
+/// come sul 7590 reale (§14.3).
+fn transport_con_lista() -> FixtureTransport {
+    let mut transport = common::transport_7590();
+    for istanza in 1..=3 {
+        transport = transport.with_soap(
+            &format!("WLANConfiguration:{istanza}"),
+            "X_AVM-DE_GetWLANDeviceListPath",
+            HttpResponse::ok(format!(
+                r#"<?xml version="1.0"?><s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body><u:X_AVM-DE_GetWLANDeviceListPathResponse xmlns:u="urn:dslforum-org:service:WLANConfiguration:{istanza}"><NewX_AVM-DE_WLANDeviceListPath>{WLAN_LIST}</NewX_AVM-DE_WLANDeviceListPath></u:X_AVM-DE_GetWLANDeviceListPathResponse></s:Body></s:Envelope>"#
+            )),
+        );
+    }
+    transport.with_file(WLAN_LIST, common::fixture("lists/wlandevicelist.xml"))
+}
+
+#[tokio::test]
+async fn la_lista_condivisa_assegna_ogni_client_una_volta_alla_sua_wi_fi_network() {
+    let transport = transport_con_lista();
+    let registro = transport.requests();
+    let mcp = common::avvia(transport).await;
+
+    let esito = common::chiama(&mcp, "list_wifi_clients", json!({ "network": "all" })).await;
+
+    assert!(!common::is_errore(&esito), "{esito:?}");
+    let client: Vec<(String, String, String)> = common::dati(&esito)["clients"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|c| {
+            (
+                c["network"].as_str().unwrap().to_owned(),
+                c["band"].as_str().unwrap().to_owned(),
+                c["mac"].as_str().unwrap().to_owned(),
+            )
+        })
+        .collect();
+    let atteso = [
+        ("main_2g", "2.4GHz", "02:00:00:00:AA:11"),
+        ("main_2g", "2.4GHz", "02:00:00:00:AA:12"),
+        ("main_5g", "5GHz", "02:00:00:00:BB:21"),
+        ("guest", "2.4GHz", "02:00:00:00:CC:31"),
+    ]
+    .map(|(n, b, m)| (n.to_owned(), b.to_owned(), m.to_owned()));
+    assert_eq!(client, atteso);
+    // la lista si scarica una volta sola, non una per istanza
+    assert_eq!(
+        registro
+            .soap()
+            .iter()
+            .filter(|r| r
+                .soap_service_action()
+                .is_some_and(|(_, a)| a == "X_AVM-DE_GetWLANDeviceListPath"))
+            .count(),
+        1
+    );
+}
 
 #[tokio::test]
 async fn list_wifi_clients_legge_la_lista_dei_client_wi_fi_se_il_router_la_da() {
