@@ -16,8 +16,12 @@ Tutti i comandi si lanciano dalla root del repo. Riferimenti: `docs/PROJECT.md` 
 
 ```sh
 openssl s_client -connect 192.168.178.1:49443 </dev/null 2>/dev/null \
-  | openssl x509 -noout -fingerprint -sha256 -ext subjectAltName
+  | openssl x509 -noout -fingerprint -sha256
+openssl s_client -connect 192.168.178.1:49443 </dev/null 2>/dev/null \
+  | openssl x509 -noout -text | grep -A1 'Subject Alternative Name'
 ```
+
+(L'openssl di macOS è LibreSSL e non conosce `-ext`: per questo il SAN si legge da `-text`.)
 
 Annota l'impronta (`AA:BB:…`) e se nel SAN compare l'IP `192.168.178.1`.
 
@@ -48,10 +52,14 @@ Le chiavi sconosciute sono un errore: non aggiungere `[audit]` o altre sezioni.
 **5. Parametri Digest** dalla risposta 401, senza credenziali:
 
 ```sh
-curl -sk -i -X POST https://192.168.178.1:49443/upnp/control/deviceinfo | grep -i www-authenticate
+curl -sk -i -X POST https://192.168.178.1:49443/upnp/control/deviceinfo \
+  -H 'Content-Type: text/xml; charset="utf-8"' \
+  -H 'SOAPACTION: "urn:dslforum-org:service:DeviceInfo:1#GetInfo"' \
+  -d '<?xml version="1.0"?><s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"><s:Body><u:GetInfo xmlns:u="urn:dslforum-org:service:DeviceInfo:1"/></s:Body></s:Envelope>' \
+  | grep -i www-authenticate
 ```
 
-Annota `qop`, `algorithm` e se c'è `opaque`. Il `-k` serve solo a questo test manuale; il codice usa sempre il pinning.
+Senza l'header `SOAPACTION` il router non risponde con la sfida Digest. Annota `qop`, `algorithm` e se c'è `opaque`. Il `-k` serve solo a questo test manuale; il codice usa sempre il pinning.
 
 ## Parte 2: test live e registrazione (#9)
 
@@ -87,8 +95,10 @@ grep -rni '<hostname del router>' $D
 grep -rni '<MAC del router, con e senza i due punti>' $D
 grep -rni '<il tuo SSID>' $D
 grep -rni '<un nome di un tuo dispositivo>' $D
-grep -rnE '([0-9]{1,3}\.){3}[0-9]{1,3}' $D | grep -v '192\.168\.' | head   # IP pubblici
+grep -rnE '([0-9]{1,3}\.){3}[0-9]{1,3}' $D | grep -v '192\.168\.' | head
 ```
+
+Sostituisci ogni `<…>` con il tuo valore reale prima di lanciare il comando. L'ultimo comando cerca IP pubblici (in zsh un `#` a fine riga non è un commento, quindi non aggiungerlo).
 
 Tutti i grep devono restituire nulla, o solo valori sostituiti.
 
@@ -125,16 +135,18 @@ Non serve committare le fixture adesso: restano nella cartella ignorata e le spo
 Nello stesso giro vanno confermate le scelte di Classification che si discostano dalla §4.2:
 
 - `X_AVM-DE_GetWLANHybridMode` è Dangerous perché restituisce la passphrase;
-- `WLANConfiguration:SetEnable` è Dangerous su tutte e tre le istanze;
+- `WLANConfiguration:SetEnable` è oggi Dangerous su tutte e tre le istanze nel registro; dalla Fase 2 il Level passa ai tool (`docs/PROJECT.md` §6.2) e `set_guest_wifi` sarà Write sull'istanza Ospiti verificata al passo 9;
 - le scritture "fuori v1" e AppSetup, WANMobileConnection e `X_AVM-DE_DoPrepareCGI` sono Forbidden.
 
 ## Parte 4: usarlo da Claude Code (facoltativo)
 
-**12.** Compila e configura il server MCP:
+**12.** Installa il server MCP **fuori dal repo**, così modificare il codice non cambia il programma che parla col router (`docs/PROJECT.md` §7.0):
 
 ```sh
-cargo build --release
-cp .mcp.json.example .mcp.json      # .mcp.json è ignorato da git
+cargo install --path crates/frix-mcp --root ~/.local     # → ~/.local/bin/frix-mcp
+cp .mcp.json.example .mcp.json                           # .mcp.json è ignorato da git
 ```
 
-In `.mcp.json` sostituisci i due percorsi segnaposto con quello del binario (`<repo>/target/release/frix-mcp`) e quello del config (`~/.config/frixmcp/config.toml`, scritto per esteso). Poi apri `claude` e verifica con `/mcp` che `frix` risulti connesso.
+In `.mcp.json` sostituisci `<utente>` nei due percorsi (binario e config, scritti per esteso). Dopo ogni modifica al codice che vuoi usare, ripeti `cargo install`.
+
+Le garanzie di FrixMCP valgono solo se l'IA non ha una shell sul Mac: usalo da Claude Desktop, oppure da Claude Code con Bash negato o in sandbox. Oggi esistono solo letture, quindi il rischio pratico è basso, ma la regola conta dalla Fase 2. Poi apri il client e verifica che `frix` risulti connesso (in Claude Code: `/mcp`).

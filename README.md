@@ -1,6 +1,6 @@
 # FrixMCP
 
-Server MCP e dashboard locale per FRITZ!Box, scritti in Rust, con un modello di permessi a tre livelli pensato per lasciare che un'IA gestisca il router senza poter rompere la rete.
+Server MCP e dashboard locale per FRITZ!Box, scritti in Rust, con un modello di permessi a tre livelli che limita cosa un'IA può fare sul router: letture libere, scritture dietro flag, operazioni pericolose dietro conferma della persona.
 
 - Sola lettura di default. Scritture con `--allow-writes`, operazioni pericolose con `--allow-dangerous` e conferma esplicita (fasi successive: oggi esistono solo letture).
 - Credenziali nel Keychain, TLS pinnato, nessuna porta esposta, audit di ogni modifica.
@@ -18,7 +18,7 @@ Stato: in sviluppo (Fase 0/1). Progetto, glossario e decisioni: `docs/PROJECT.md
 
 ## Installazione
 
-`cargo build --release` → `target/release/frix-mcp`. Vedi `docs/PROJECT.md` §12 per creare l'utente dedicato e salvare la password nel Keychain.
+`cargo install --path crates/frix-mcp --root ~/.local` → `~/.local/bin/frix-mcp`, fuori dal repo (vedi sotto). Per creare il Router Account, salvare la password nel Keychain e scrivere la config: `docs/guida-operator-fase1.md`.
 
 ## Sviluppo
 
@@ -32,6 +32,8 @@ cargo deny check
 ## Uso con Claude Code
 
 Copia `.mcp.json.example` in `.mcp.json` (ignorato da git) e adatta i percorsi. Nessuna password nel file: il binario la prende dal Keychain.
+
+Le garanzie valgono solo se l'IA non ha una shell sul tuo Mac: usa Claude Desktop, oppure Claude Code con Bash negato o in sandbox. Dettagli in `SECURITY.md` e `docs/PROJECT.md` §7.0.
 
 ## Tool disponibili
 
