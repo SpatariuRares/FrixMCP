@@ -1,13 +1,13 @@
-//! Albero XML minimo sopra `quick-xml`: nomi locali (senza prefisso di namespace)
-//! e testo già decodificato. Basta per `tr64desc.xml`, SCPD, envelope SOAP e
-//! documenti annidati come i diritti di `X_AVM-DE_GetCurrentUser`.
+//! Minimal XML tree on top of `quick-xml`: local names (no namespace prefix) and
+//! already decoded text. Enough for `tr64desc.xml`, SCPDs, SOAP envelopes and
+//! nested documents such as the rights of `X_AVM-DE_GetCurrentUser`.
 
 use quick_xml::Reader;
 use quick_xml::events::Event;
 
 use crate::error::FrixError;
 
-/// Elemento XML con nome locale, testo concatenato e figli.
+/// XML element with local name, concatenated text and children.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub(crate) struct Element {
     pub(crate) name: String,
@@ -16,97 +16,99 @@ pub(crate) struct Element {
 }
 
 impl Element {
-    /// Primo figlio diretto con questo nome locale.
+    /// First direct child with this local name.
     pub(crate) fn child(&self, name: &str) -> Option<&Element> {
         self.children.iter().find(|c| c.name == name)
     }
 
-    /// Testo del primo figlio diretto con questo nome locale.
+    /// Text of the first direct child with this local name.
     pub(crate) fn child_text(&self, name: &str) -> Option<&str> {
         self.child(name).map(|c| c.text.as_str())
     }
 
-    /// Tutti i discendenti (a qualunque profondità) con questo nome locale, in ordine di documento.
+    /// All descendants (at any depth) with this local name, in document order.
     pub(crate) fn descendants<'a>(&'a self, name: &'a str) -> Vec<&'a Element> {
-        let mut trovati = Vec::new();
-        self.collect(name, &mut trovati);
-        trovati
+        let mut found = Vec::new();
+        self.collect(name, &mut found);
+        found
     }
 
-    fn collect<'a>(&'a self, name: &str, trovati: &mut Vec<&'a Element>) {
-        for figlio in &self.children {
-            if figlio.name == name {
-                trovati.push(figlio);
+    fn collect<'a>(&'a self, name: &str, found: &mut Vec<&'a Element>) {
+        for child in &self.children {
+            if child.name == name {
+                found.push(child);
             }
-            figlio.collect(name, trovati);
+            child.collect(name, found);
         }
     }
 }
 
-/// Analizza un documento e restituisce l'elemento radice.
-pub(crate) fn parse(documento: &str) -> Result<Element, FrixError> {
-    let mut reader = Reader::from_str(documento);
-    // la radice fittizia raccoglie l'elemento del documento
-    let mut pila: Vec<Element> = vec![Element::default()];
+/// Parses a document and returns the root element.
+pub(crate) fn parse(document: &str) -> Result<Element, FrixError> {
+    let mut reader = Reader::from_str(document);
+    // the dummy root collects the document element
+    let mut stack: Vec<Element> = vec![Element::default()];
     loop {
-        let evento = reader
+        let event = reader
             .read_event()
-            .map_err(|e| FrixError::Parse(format!("XML non valido: {e}")))?;
-        match evento {
-            Event::Start(e) => pila.push(Element {
+            .map_err(|e| FrixError::Parse(format!("invalid XML: {e}")))?;
+        match event {
+            Event::Start(e) => stack.push(Element {
                 name: e.local_name().as_ref().to_owned(),
                 ..Element::default()
             }),
             Event::Empty(e) => {
-                let vuoto = Element {
+                let empty = Element {
                     name: e.local_name().as_ref().to_owned(),
                     ..Element::default()
                 };
-                aggancia(&mut pila, vuoto)?;
+                attach(&mut stack, empty)?;
             }
             Event::End(_) => {
-                let chiuso = pila
+                let closed = stack
                     .pop()
-                    .ok_or_else(|| FrixError::Parse("chiusura senza apertura".into()))?;
-                aggancia(&mut pila, chiuso)?;
+                    .ok_or_else(|| FrixError::Parse("closing tag without opening".into()))?;
+                attach(&mut stack, closed)?;
             }
-            Event::Text(t) => testo_corrente(&mut pila)?.push_str(&t.xml10_content()),
+            Event::Text(t) => current_text(&mut stack)?.push_str(&t.xml10_content()),
             Event::CData(c) => {
-                let dati = c.into_inner();
-                testo_corrente(&mut pila)?.push_str(&dati);
+                let data = c.into_inner();
+                current_text(&mut stack)?.push_str(&data);
             }
             Event::GeneralRef(r) => {
-                let riferimento = format!("&{};", r.xml10_content());
-                let risolto = quick_xml::escape::unescape(&riferimento)
-                    .map_err(|e| FrixError::Parse(format!("entità non valida: {e}")))?;
-                testo_corrente(&mut pila)?.push_str(&risolto);
+                let reference = format!("&{};", r.xml10_content());
+                let resolved = quick_xml::escape::unescape(&reference)
+                    .map_err(|e| FrixError::Parse(format!("invalid entity: {e}")))?;
+                current_text(&mut stack)?.push_str(&resolved);
             }
             Event::Eof => break,
             _ => {}
         }
     }
-    let mut radice_fittizia = pila
+    let mut dummy_root = stack
         .pop()
-        .ok_or_else(|| FrixError::Parse("documento vuoto".into()))?;
-    if !pila.is_empty() {
-        return Err(FrixError::Parse("elementi non chiusi".into()));
+        .ok_or_else(|| FrixError::Parse("empty document".into()))?;
+    if !stack.is_empty() {
+        return Err(FrixError::Parse("unclosed elements".into()));
     }
-    radice_fittizia
+    dummy_root
         .children
         .pop()
-        .ok_or_else(|| FrixError::Parse("documento senza elemento radice".into()))
+        .ok_or_else(|| FrixError::Parse("document without root element".into()))
 }
 
-fn aggancia(pila: &mut [Element], figlio: Element) -> Result<(), FrixError> {
-    pila.last_mut()
-        .ok_or_else(|| FrixError::Parse("chiusura senza apertura".into()))?
+fn attach(stack: &mut [Element], child: Element) -> Result<(), FrixError> {
+    stack
+        .last_mut()
+        .ok_or_else(|| FrixError::Parse("closing tag without opening".into()))?
         .children
-        .push(figlio);
+        .push(child);
     Ok(())
 }
 
-fn testo_corrente(pila: &mut [Element]) -> Result<&mut String, FrixError> {
-    pila.last_mut()
+fn current_text(stack: &mut [Element]) -> Result<&mut String, FrixError> {
+    stack
+        .last_mut()
         .map(|e| &mut e.text)
-        .ok_or_else(|| FrixError::Parse("testo fuori dal documento".into()))
+        .ok_or_else(|| FrixError::Parse("text outside the document".into()))
 }

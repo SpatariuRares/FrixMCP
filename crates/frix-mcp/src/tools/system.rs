@@ -15,7 +15,7 @@ struct SystemInfo {
     model: String,
     description: String,
     product_class: String,
-    /// `null` se l'Operator lo oscura (`hide_serial_number` in `config.toml`).
+    /// `null` if the Operator hides it (`hide_serial_number` in `config.toml`).
     serial_number: Option<String>,
     firmware_version: String,
     hardware_version: String,
@@ -49,11 +49,11 @@ impl FrixServer {
     #[tool(
         name = "get_system_info",
         description = concat!(
-            "Modello, firmware, numero di serie (null se l'Operator lo oscura), uptime, aggiornamento disponibile e diritti del Router Account del FRITZ!Box (senza il log di sistema). ",
-            dati_della_rete!()
+            "FRITZ!Box model, firmware, serial number (null if the Operator hides it), uptime, available update, and the Router Account with its rights (no system log). ",
+            network_data!()
         ),
         annotations(
-            title = "Informazioni di sistema",
+            title = "System information",
             read_only_hint = true,
             destructive_hint = false,
             idempotent_hint = true,
@@ -69,7 +69,7 @@ impl FrixServer {
     async fn system_info(&self) -> Result<SystemInfo, FrixError> {
         let info = device_info::info(&self.client).await?;
         let update = user_interface::update_info(&self.client).await?;
-        let utente = lan_config_security::current_user(&self.client).await?;
+        let user = lan_config_security::current_user(&self.client).await?;
         Ok(SystemInfo {
             manufacturer: info.manufacturer,
             model: info.model,
@@ -86,8 +86,8 @@ impl FrixServer {
                 info_url: update.info_url,
             },
             current_user: CurrentUser {
-                username: utente.username,
-                rights: utente
+                username: user.username,
+                rights: user
                     .rights
                     .into_iter()
                     .map(|r| Right {

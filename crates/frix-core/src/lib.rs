@@ -1,13 +1,14 @@
-//! `frix-core`: client TR-064 verso il FRITZ!Box, Policy e tipi di dominio.
+//! `frix-core`: TR-064 client for the FRITZ!Box, Policy and domain types.
 //!
-//! Non dipende da `frix-mcp` né da `frix-web` (docs/PROJECT.md §6.1).
+//! Does not depend on `frix-mcp` or `frix-web` (docs/PROJECT.md §6.1).
 //!
-//! Percorso di una lettura: `services::*` → [`tr064::Tr064Client`] (SCPD, Policy,
-//! envelope SOAP) → [`transport::HttpTransport`], l'unico seam verso il router.
+//! Path of a read: `services::*` → [`tr064::Tr064Client`] (SCPD, Policy,
+//! SOAP envelope) → [`transport::HttpTransport`], the only seam to the router.
 #![warn(missing_docs)]
 
 pub mod config;
 pub mod error;
+pub mod language;
 pub mod model;
 pub mod policy;
 pub mod secrets;

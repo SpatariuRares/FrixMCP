@@ -1,19 +1,19 @@
-//! `RouterTransport`: il trasporto reale verso il FRITZ!Box (docs/PROJECT.md §5.1, §7.4).
+//! `RouterTransport`: the real transport to the FRITZ!Box (docs/PROJECT.md §5.1, §7.4).
 //!
-//! - [`Channel::Plain`]: HTTP sulla porta 49000, senza credenziali (descrizioni, SCPD,
+//! - [`Channel::Plain`]: HTTP on port 49000, no credentials (descriptions, SCPDs,
 //!   `GetSecurityPort`).
-//! - [`Channel::Secure`]: HTTPS sulla porta letta da `GetSecurityPort`, TLS verificato
-//!   come da [`TlsTrust`] e HTTP Digest. Le credenziali non viaggiano mai in chiaro.
+//! - [`Channel::Secure`]: HTTPS on the port read from `GetSecurityPort`, TLS verified
+//!   as set by [`TlsTrust`], and HTTP Digest. Credentials never travel in plain text.
 //!
-//! Contro i blocchi del router (minaccia T8, §7.2): il nonce Digest si riusa, una
-//! password rifiutata non si ritenta finché il processo vive, e un 503 si ripete solo
-//! con backoff e al massimo [`MAX_RETRIES`] volte.
+//! Against router lockouts (threat T8, §7.2): the Digest nonce is reused, a rejected
+//! password is not retried while the process lives, and a 503 is retried only with
+//! backoff and at most [`MAX_RETRIES`] times.
 //!
-//! `BlockTime` non è gestito di proposito: è un campo della risposta di
-//! `login_sid.lua` (login a SID della UI web, §5.2), che il TR-064 con Digest non usa.
-//! Se e come il 7590 segnali un blocco dopo Digest falliti (401 senza sfida, 503,
-//! `Retry-After`, …) è da verificare sul router (§14.3): finché non lo si sa, nessun
-//! comportamento inventato oltre al non ritentare dopo un rifiuto.
+//! `BlockTime` is deliberately not handled: it is a field of the `login_sid.lua`
+//! response (SID login of the web UI, §5.2), which TR-064 with Digest does not use.
+//! Whether and how the 7590 signals a block after failed Digests (401 without challenge,
+//! 503, `Retry-After`, …) is to be verified on the router (§14.3): until then, no
+//! invented behavior beyond not retrying after a rejection.
 
 use std::fmt::{self, Write as _};
 use std::net::IpAddr;
@@ -32,39 +32,39 @@ use crate::error::FrixError;
 
 mod connector;
 
-/// Porta HTTP del FRITZ!Box per descrizioni e SCPD.
+/// FRITZ!Box HTTP port for descriptions and SCPDs.
 pub const DEFAULT_HTTP_PORT: u16 = 49000;
 
-/// Tentativi aggiuntivi al massimo dopo un 503.
+/// Maximum extra attempts after a 503.
 pub const MAX_RETRIES: u32 = 3;
 
-/// Attesa massima accettata da un `Retry-After`: oltre, si rinuncia invece di aspettare.
+/// Maximum wait accepted from a `Retry-After`: beyond it, give up instead of waiting.
 const MAX_RETRY_AFTER: Duration = Duration::from_secs(60);
 
-/// Timeout globale di una richiesta.
+/// Global timeout of a request.
 const TIMEOUT: Duration = Duration::from_secs(20);
 
-/// Router Account e password. La password è un `SecretString`: `Debug` la oscura.
+/// Router Account and password. The password is a `SecretString`: `Debug` redacts it.
 #[derive(Debug, Clone)]
 pub struct Credentials {
-    /// Nome del Router Account (per esempio `frixmcp`).
+    /// Name of the Router Account (for example `frixmcp`).
     pub username: String,
-    /// Password, letta dal Keychain.
+    /// Password, read from the Keychain.
     pub password: SecretString,
 }
 
-/// Dove sta il router e come si verifica il suo certificato.
+/// Where the router is and how its certificate is verified.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RouterSettings {
-    /// IP o nome del router (per esempio `192.168.178.1`).
+    /// IP or name of the router (for example `192.168.178.1`).
     pub host: String,
-    /// Porta HTTP in chiaro (di norma [`DEFAULT_HTTP_PORT`]).
+    /// Plain HTTP port (normally [`DEFAULT_HTTP_PORT`]).
     pub http_port: u16,
-    /// Modalità di verifica TLS.
+    /// TLS verification mode.
     pub tls: TlsTrust,
 }
 
-/// Trasporto reale: HTTP/1.1 con `ureq` in `spawn_blocking`, TLS con rustls.
+/// Real transport: HTTP/1.1 with `ureq` in `spawn_blocking`, TLS with rustls.
 pub struct RouterTransport {
     inner: Arc<Inner>,
 }
@@ -81,9 +81,9 @@ struct Inner {
 
 #[derive(Default)]
 struct DigestState {
-    /// Ultima sfida ricevuta e richieste già fatte con il suo nonce.
+    /// Last challenge received and requests already made with its nonce.
     challenge: Option<(Challenge, u32)>,
-    /// Il router ha rifiutato le credenziali: non si ritenta.
+    /// The router rejected the credentials: no retry.
     rejected: bool,
 }
 
@@ -99,7 +99,7 @@ impl fmt::Debug for RouterTransport {
 }
 
 impl RouterTransport {
-    /// Prepara il trasporto. Non apre connessioni.
+    /// Prepares the transport. Opens no connections.
     pub fn new(settings: RouterSettings, credentials: Credentials) -> Result<Self, FrixError> {
         let (tls_config, pin_failure) = tls::client_config(&settings.tls)?;
         let server_name = server_name(&settings.host)?;
@@ -124,8 +124,8 @@ impl RouterTransport {
         })
     }
 
-    /// Porta HTTPS letta con `DeviceInfo:GetSecurityPort`. Prima di saperla, ogni
-    /// richiesta su [`Channel::Secure`] fallisce senza traffico. Si fissa una volta sola.
+    /// HTTPS port read with `DeviceInfo:GetSecurityPort`. Until it is known, every
+    /// request on [`Channel::Secure`] fails without traffic. Set only once.
     pub fn set_secure_port(&self, port: u16) {
         let _ = self.inner.secure_port.set(port);
     }
@@ -137,12 +137,12 @@ impl HttpTransport for RouterTransport {
         Box::pin(async move {
             tokio::task::spawn_blocking(move || inner.send(&request))
                 .await
-                .map_err(|e| FrixError::Transport(format!("richiesta interrotta: {e}")))?
+                .map_err(|e| FrixError::Transport(format!("request interrupted: {e}")))?
         })
     }
 }
 
-/// Risposta con gli header che servono al trasporto.
+/// Response with the headers the transport needs.
 struct Raw {
     status: u16,
     challenges: Vec<String>,
@@ -153,8 +153,8 @@ struct Raw {
 impl Inner {
     fn send(&self, request: &HttpRequest) -> Result<HttpResponse, FrixError> {
         let url = self.url(request)?;
-        let mut tentativi_503 = 0;
-        let mut sfide = 0;
+        let mut attempts_503 = 0;
+        let mut challenges_seen = 0;
         loop {
             let authorization = match request.channel {
                 Channel::Plain => None,
@@ -169,21 +169,21 @@ impl Inner {
             if raw.status == 401
                 && request.channel == Channel::Secure
                 && self.accept_challenge(&raw, authorization.as_ref().map(|(_, nc)| *nc))?
-                && sfide == 0
+                && challenges_seen == 0
             {
-                sfide += 1;
+                challenges_seen += 1;
                 continue;
             }
             if raw.status == 503 {
-                match retry_delay(tentativi_503, raw.retry_after.as_deref()) {
-                    Some(attesa) => {
-                        tentativi_503 += 1;
-                        std::thread::sleep(attesa);
+                match retry_delay(attempts_503, raw.retry_after.as_deref()) {
+                    Some(delay) => {
+                        attempts_503 += 1;
+                        std::thread::sleep(delay);
                         continue;
                     }
                     None => {
                         return Err(FrixError::Transport(
-                            "il router rifiuta le richieste (503): riprova più tardi".into(),
+                            "the router refuses requests (503): try again later".into(),
                         ));
                     }
                 }
@@ -198,7 +198,7 @@ impl Inner {
     fn url(&self, request: &HttpRequest) -> Result<String, FrixError> {
         if !request.path.starts_with('/') {
             return Err(FrixError::Validation(format!(
-                "path non assoluto: {}",
+                "path is not absolute: {}",
                 request.path
             )));
         }
@@ -209,28 +209,26 @@ impl Inner {
         Ok(match request.channel {
             Channel::Plain => format!("http://{host}:{}{}", self.http_port, request.path),
             Channel::Secure => {
-                let porta = self.secure_port.get().ok_or_else(|| {
-                    FrixError::Transport(
-                        "porta HTTPS del router non ancora nota (GetSecurityPort)".into(),
-                    )
+                let port = self.secure_port.get().ok_or_else(|| {
+                    FrixError::Transport("router HTTPS port not known yet (GetSecurityPort)".into())
                 })?;
-                format!("https://{host}:{porta}{}", request.path)
+                format!("https://{host}:{port}{}", request.path)
             }
         })
     }
 
-    /// Header `Authorization` con l'ultima sfida nota e il suo `nc`, o `None` se non
-    /// c'è ancora una sfida. Dopo un rifiuto delle credenziali non si ritenta.
+    /// `Authorization` header with the last known challenge and its `nc`, or `None` if
+    /// there is no challenge yet. After a credentials rejection there is no retry.
     fn authorization(&self, request: &HttpRequest) -> Result<Option<(String, u32)>, FrixError> {
-        let mut stato = self.digest.lock().unwrap_or_else(PoisonError::into_inner);
-        if stato.rejected {
+        let mut state = self.digest.lock().unwrap_or_else(PoisonError::into_inner);
+        if state.rejected {
             return Err(FrixError::Unauthenticated);
         }
-        let Some((challenge, nc)) = stato.challenge.as_mut() else {
+        let Some((challenge, nc)) = state.challenge.as_mut() else {
             return Ok(None);
         };
         *nc += 1;
-        let metodo = match request.method {
+        let method = match request.method {
             Method::Get => "GET",
             Method::Post => "POST",
         };
@@ -238,7 +236,7 @@ impl Inner {
             .authorization(
                 &self.credentials.username,
                 &self.credentials.password,
-                metodo,
+                method,
                 &request.path,
                 *nc,
                 &cnonce()?,
@@ -246,29 +244,29 @@ impl Inner {
             .map(|header| Some((header, *nc)))
     }
 
-    /// Registra la sfida di un 401 e dice se ripetere la richiesta (una volta sola).
+    /// Records the challenge of a 401 and says whether to repeat the request (once only).
     ///
-    /// `nc_inviato` è il contatore della richiesta appena fatta con credenziali, se c'erano.
-    /// Un 401 alla prima richiesta con un nonce fresco (`nc` 1) e senza `stale=true`
-    /// significa credenziali rifiutate: da lì in poi nessun tentativo. Con un nonce
-    /// riusato (`nc` > 1) il 401 vuol dire solo nonce scaduto.
-    fn accept_challenge(&self, raw: &Raw, nc_inviato: Option<u32>) -> Result<bool, FrixError> {
+    /// `nc_sent` is the counter of the request just made with credentials, if any.
+    /// A 401 on the first request with a fresh nonce (`nc` 1) and without `stale=true`
+    /// means credentials rejected: no attempts from then on. With a reused nonce
+    /// (`nc` > 1) the 401 only means an expired nonce.
+    fn accept_challenge(&self, raw: &Raw, nc_sent: Option<u32>) -> Result<bool, FrixError> {
         let challenge = raw.challenges.iter().find_map(|h| Challenge::parse(h).ok());
-        let mut stato = self.digest.lock().unwrap_or_else(PoisonError::into_inner);
+        let mut state = self.digest.lock().unwrap_or_else(PoisonError::into_inner);
         let Some(challenge) = challenge else {
             if raw.challenges.is_empty() {
                 return Ok(false);
             }
             return Err(FrixError::Transport(
-                "il router chiede un'autenticazione diversa da HTTP Digest".into(),
+                "the router asks for an authentication other than HTTP Digest".into(),
             ));
         };
-        if nc_inviato == Some(1) && !challenge.stale {
-            stato.rejected = true;
-            stato.challenge = None;
+        if nc_sent == Some(1) && !challenge.stale {
+            state.rejected = true;
+            state.challenge = None;
             return Ok(false);
         }
-        stato.challenge = Some((challenge, 0));
+        state.challenge = Some((challenge, 0));
         Ok(true)
     }
 
@@ -278,7 +276,7 @@ impl Inner {
         url: &str,
         authorization: Option<&str>,
     ) -> Result<Raw, FrixError> {
-        let esito = match request.method {
+        let result = match request.method {
             Method::Get => {
                 let mut r = self.agent.get(url);
                 if let Some(a) = authorization {
@@ -291,8 +289,8 @@ impl Inner {
                     .agent
                     .post(url)
                     .header("Content-Type", r#"text/xml; charset="utf-8""#);
-                if let Some(azione) = &request.soap_action {
-                    r = r.header("SOAPACTION", format!("\"{azione}\""));
+                if let Some(action) = &request.soap_action {
+                    r = r.header("SOAPACTION", format!("\"{action}\""));
                 }
                 if let Some(a) = authorization {
                     r = r.header("Authorization", a);
@@ -300,8 +298,8 @@ impl Inner {
                 r.send(request.body.as_str())
             }
         };
-        let mut risposta = esito.map_err(|e| self.transport_error(&e))?;
-        let headers = risposta.headers();
+        let mut response = result.map_err(|e| self.transport_error(&e))?;
+        let headers = response.headers();
         let challenges = headers
             .get_all("www-authenticate")
             .iter()
@@ -310,8 +308,8 @@ impl Inner {
         let retry_after = headers
             .get("retry-after")
             .and_then(|v| v.to_str().ok().map(str::to_owned));
-        let status = risposta.status().as_u16();
-        let body = risposta
+        let status = response.status().as_u16();
+        let body = response
             .body_mut()
             .read_to_string()
             .map_err(|e| self.transport_error(&e))?;
@@ -323,8 +321,8 @@ impl Inner {
         })
     }
 
-    /// Un'impronta sbagliata arriva da ureq come errore di I/O: qui torna `TlsPinMismatch`.
-    fn transport_error(&self, errore: &ureq::Error) -> FrixError {
+    /// A wrong fingerprint comes from ureq as an I/O error: here it becomes `TlsPinMismatch` again.
+    fn transport_error(&self, error: &ureq::Error) -> FrixError {
         if let Some(pin) = self
             .pin_failure
             .lock()
@@ -333,7 +331,7 @@ impl Inner {
         {
             return pin;
         }
-        match errore {
+        match error {
             ureq::Error::Io(e)
                 if e.get_ref()
                     .is_some_and(<dyn std::error::Error + Send + Sync>::is::<rustls::Error>) =>
@@ -345,33 +343,33 @@ impl Inner {
     }
 }
 
-/// Attesa prima del tentativo `tentativo + 1` dopo un 503, o `None` per rinunciare.
+/// Wait before attempt `attempt + 1` after a 503, or `None` to give up.
 ///
-/// Rispetta `Retry-After` (secondi) se presente; altrimenti 1, 2, 4 s. Oltre
-/// [`MAX_RETRIES`] tentativi, o se il router chiede più di un minuto, si rinuncia.
-pub(crate) fn retry_delay(tentativo: u32, retry_after: Option<&str>) -> Option<Duration> {
-    if tentativo >= MAX_RETRIES {
+/// Honors `Retry-After` (seconds) if present; otherwise 1, 2, 4 s. Beyond
+/// [`MAX_RETRIES`] attempts, or if the router asks for more than a minute, give up.
+pub(crate) fn retry_delay(attempt: u32, retry_after: Option<&str>) -> Option<Duration> {
+    if attempt >= MAX_RETRIES {
         return None;
     }
-    let attesa = match retry_after.and_then(|v| v.trim().parse::<u64>().ok()) {
-        Some(secondi) => Duration::from_secs(secondi),
-        None => Duration::from_secs(1u64 << tentativo),
+    let delay = match retry_after.and_then(|v| v.trim().parse::<u64>().ok()) {
+        Some(seconds) => Duration::from_secs(seconds),
+        None => Duration::from_secs(1u64 << attempt),
     };
-    (attesa <= MAX_RETRY_AFTER).then_some(attesa)
+    (delay <= MAX_RETRY_AFTER).then_some(delay)
 }
 
 fn server_name(host: &str) -> Result<ServerName<'static>, FrixError> {
     ServerName::try_from(host.to_owned())
-        .map_err(|_| FrixError::Validation(format!("host non valido: {host}")))
+        .map_err(|_| FrixError::Validation(format!("invalid host: {host}")))
 }
 
 fn cnonce() -> Result<String, FrixError> {
     use ring::rand::SecureRandom as _;
-    let mut byte = [0u8; 8];
+    let mut bytes = [0u8; 8];
     ring::rand::SystemRandom::new()
-        .fill(&mut byte)
-        .map_err(|_| FrixError::Transport("generatore casuale non disponibile".into()))?;
-    Ok(byte.iter().fold(String::new(), |mut s, b| {
+        .fill(&mut bytes)
+        .map_err(|_| FrixError::Transport("random generator unavailable".into()))?;
+    Ok(bytes.iter().fold(String::new(), |mut s, b| {
         let _ = write!(s, "{b:02x}");
         s
     }))
@@ -384,10 +382,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn backoff_esponenziale_senza_retry_after() {
-        let attese: Vec<_> = (0..4).map(|t| retry_delay(t, None)).collect();
+    fn exponential_backoff_without_retry_after() {
+        let delays: Vec<_> = (0..4).map(|t| retry_delay(t, None)).collect();
         assert_eq!(
-            attese,
+            delays,
             vec![
                 Some(Duration::from_secs(1)),
                 Some(Duration::from_secs(2)),
@@ -398,13 +396,9 @@ mod tests {
     }
 
     #[test]
-    fn retry_after_rispettato_e_limitato() {
+    fn retry_after_honored_and_capped() {
         assert_eq!(retry_delay(0, Some("10")), Some(Duration::from_secs(10)));
-        assert_eq!(
-            retry_delay(0, Some("600")),
-            None,
-            "blocco lungo: si rinuncia"
-        );
+        assert_eq!(retry_delay(0, Some("600")), None, "long block: give up");
         assert_eq!(retry_delay(3, Some("1")), None);
     }
 }

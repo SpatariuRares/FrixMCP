@@ -14,10 +14,10 @@ use crate::server::FrixServer;
 #[derive(Debug, Default, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 struct ListHostsParams {
-    /// Solo gli Host attivi adesso (default `false`).
+    /// Only the Hosts active right now (default `false`).
     #[serde(default)]
     active_only: bool,
-    /// Aggiunge a ogni Host il nodo mesh e i link con cui è collegato (default `false`).
+    /// Adds to each Host the mesh node and the links it is connected through (default `false`).
     #[serde(default)]
     include_mesh: bool,
 }
@@ -25,7 +25,7 @@ struct ListHostsParams {
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 struct GetHostParams {
-    /// MAC dell'Host, per esempio `AA:BB:CC:DD:EE:FF`. Gli Host si indicano solo per MAC, mai per IP.
+    /// MAC of the Host, for example `AA:BB:CC:DD:EE:FF`. Hosts are identified only by MAC, never by IP.
     mac: String,
 }
 
@@ -34,7 +34,7 @@ struct HostList {
     hosts: Vec<HostOut>,
 }
 
-// perché: i flag rispecchiano uno a uno quelli della lista host del router.
+// why: the flags mirror one to one those of the router's host list.
 #[allow(clippy::struct_excessive_bools)]
 #[derive(Debug, Serialize)]
 struct HostOut {
@@ -53,14 +53,14 @@ struct HostOut {
     priority: bool,
     filter_profile_id: Option<String>,
     meshable: bool,
-    /// Solo con `include_mesh`.
+    /// Only with `include_mesh`.
     #[serde(flatten)]
-    mesh: Option<CampoMesh>,
+    mesh: Option<MeshField>,
 }
 
 #[derive(Debug, Serialize)]
-struct CampoMesh {
-    /// `null` se l'Host non compare nella mesh.
+struct MeshField {
+    /// `null` if the Host does not appear in the mesh.
     mesh: Option<HostMesh>,
 }
 
@@ -142,13 +142,13 @@ impl From<Host> for HostOut {
     }
 }
 
-/// Nodo e link mesh dell'Host con questo MAC, se compare nella mesh.
+/// Mesh node and links of the Host with this MAC, if it appears in the mesh.
 fn host_mesh(mesh: &MeshTopology, mac: Mac) -> Option<HostMesh> {
-    let nodo = mesh.node_of(mac)?;
+    let node = mesh.node_of(mac)?;
     let links = mesh
-        .links_of(&nodo.uid)
-        .map(|(link, altro)| {
-            let peer = mesh.node(&altro.node_uid);
+        .links_of(&node.uid)
+        .map(|(link, other)| {
+            let peer = mesh.node(&other.node_uid);
             HostMeshLink {
                 peer: peer.map(|n| n.name.clone()).unwrap_or_default(),
                 peer_mac: peer.and_then(|n| n.mac).map(|m| m.to_string()),
@@ -159,20 +159,20 @@ fn host_mesh(mesh: &MeshTopology, mac: Mac) -> Option<HostMesh> {
         })
         .collect();
     Some(HostMesh {
-        node_uid: nodo.uid.clone(),
-        role: nodo.role.clone(),
+        node_uid: node.uid.clone(),
+        role: node.role.clone(),
         links,
     })
 }
 
-fn mesh_end(mesh: &MeshTopology, capo: &MeshEnd) -> MeshEndOut {
+fn mesh_end(mesh: &MeshTopology, end: &MeshEnd) -> MeshEndOut {
     MeshEndOut {
-        uid: capo.node_uid.clone(),
+        uid: end.node_uid.clone(),
         name: mesh
-            .node(&capo.node_uid)
+            .node(&end.node_uid)
             .map(|n| n.name.clone())
             .unwrap_or_default(),
-        interface: capo.interface.clone(),
+        interface: end.interface.clone(),
     }
 }
 
@@ -196,11 +196,11 @@ impl FrixServer {
     #[tool(
         name = "list_hosts",
         description = concat!(
-            "Host noti al FRITZ!Box, identificati per MAC: nome, IP, attivo, interfaccia, porta e velocità, ospite, accesso a Internet, profilo filtro, priorità. ",
-            dati_della_rete!()
+            "Hosts known to the FRITZ!Box, identified by MAC: name, IP, active, interface, port and speed, guest, Internet access, filter profile, priority. ",
+            network_data!()
         ),
         annotations(
-            title = "Elenco degli Host",
+            title = "Host list",
             read_only_hint = true,
             destructive_hint = false,
             idempotent_hint = true,
@@ -217,11 +217,11 @@ impl FrixServer {
     #[tool(
         name = "get_host",
         description = concat!(
-            "Dettaglio di un Host indicato per MAC (mai per IP: un IP può passare a un altro Host). ",
-            dati_della_rete!()
+            "Details of one Host identified by MAC (never by IP: an IP can move to another Host). ",
+            network_data!()
         ),
         annotations(
-            title = "Dettaglio di un Host",
+            title = "Host details",
             read_only_hint = true,
             destructive_hint = false,
             idempotent_hint = true,
@@ -238,11 +238,11 @@ impl FrixServer {
     #[tool(
         name = "get_mesh_topology",
         description = concat!(
-            "Nodi (router, repeater, Host) e link della mesh FRITZ!: tipo, stato, Band e velocità in kbit/s. ",
-            dati_della_rete!()
+            "Nodes (router, repeaters, Hosts) and links of the FRITZ! mesh: type, state, Band and speed in kbit/s. ",
+            network_data!()
         ),
         annotations(
-            title = "Topologia mesh",
+            title = "Mesh topology",
             read_only_hint = true,
             destructive_hint = false,
             idempotent_hint = true,
@@ -261,22 +261,22 @@ impl FrixServer {
     }
 
     async fn host_list(&self, params: &ListHostsParams) -> Result<HostList, FrixError> {
-        let elenco = hosts::list(&self.client).await?;
+        let all_hosts = hosts::list(&self.client).await?;
         let mesh = if params.include_mesh {
             Some(hosts::mesh(&self.client).await?)
         } else {
             None
         };
         Ok(HostList {
-            hosts: elenco
+            hosts: all_hosts
                 .into_iter()
                 .filter(|h| h.active || !params.active_only)
                 .map(|h| {
-                    let nella_mesh = mesh.as_ref().map(|m| CampoMesh {
+                    let in_mesh = mesh.as_ref().map(|m| MeshField {
                         mesh: host_mesh(m, h.mac),
                     });
                     HostOut {
-                        mesh: nella_mesh,
+                        mesh: in_mesh,
                         ..HostOut::from(h)
                     }
                 })

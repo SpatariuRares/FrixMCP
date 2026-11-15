@@ -1,7 +1,7 @@
 //! `WANDSLInterfaceConfig:1` (docs/PROJECT.md §4.2.5).
 //!
-//! Su una linea che non è DSL (fibra, cavo, LAN) il router restituisce valori vuoti:
-//! qui diventano `None` invece di un errore di parsing.
+//! On a non-DSL line (fiber, cable, LAN) the router returns empty values:
+//! here they become `None` instead of a parse error.
 
 use std::str::FromStr;
 
@@ -10,43 +10,43 @@ use crate::tr064::{SoapResponse, Tr064Client};
 
 const SERVICE: &str = "WANDSLInterfaceConfig:1";
 
-/// Valori di una direzione della linea.
+/// Values for one direction of the line.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DslDirection {
     /// `New*CurrRate`, in kbit/s.
     pub current_rate_kbps: Option<u64>,
     /// `New*MaxRate`, in kbit/s.
     pub max_rate_kbps: Option<u64>,
-    /// `New*NoiseMargin` (margine SNR), in dB.
+    /// `New*NoiseMargin` (SNR margin), in dB.
     pub snr_margin_db: Option<f64>,
     /// `New*Attenuation`, in dB.
     pub attenuation_db: Option<f64>,
 }
 
-/// `GetInfo`: stato e valori della linea.
+/// `GetInfo`: line status and values.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DslInfo {
     /// `NewEnable`.
     pub enabled: Option<bool>,
-    /// `NewStatus` (per esempio `Up`, `NoSignal`).
+    /// `NewStatus` (for example `Up`, `NoSignal`).
     pub status: String,
-    /// `NewDataPath` (per esempio `Interleaved`, `Fast`).
+    /// `NewDataPath` (for example `Interleaved`, `Fast`).
     pub data_path: String,
-    /// Valori in download.
+    /// Downstream values.
     pub downstream: DslDirection,
-    /// Valori in upload.
+    /// Upstream values.
     pub upstream: DslDirection,
 }
 
 /// `GetInfo`.
 pub async fn info(client: &Tr064Client) -> Result<DslInfo, FrixError> {
     let r = client.call(SERVICE, "GetInfo", &[]).await?;
-    let direzione = |verso: &str| -> Result<DslDirection, FrixError> {
+    let direction = |dir: &str| -> Result<DslDirection, FrixError> {
         Ok(DslDirection {
-            current_rate_kbps: optional(&r, &format!("New{verso}CurrRate"))?,
-            max_rate_kbps: optional(&r, &format!("New{verso}MaxRate"))?,
-            snr_margin_db: tenths(&r, &format!("New{verso}NoiseMargin"))?,
-            attenuation_db: tenths(&r, &format!("New{verso}Attenuation"))?,
+            current_rate_kbps: optional(&r, &format!("New{dir}CurrRate"))?,
+            max_rate_kbps: optional(&r, &format!("New{dir}MaxRate"))?,
+            snr_margin_db: tenths(&r, &format!("New{dir}NoiseMargin"))?,
+            attenuation_db: tenths(&r, &format!("New{dir}Attenuation"))?,
         })
     };
     Ok(DslInfo {
@@ -56,19 +56,19 @@ pub async fn info(client: &Tr064Client) -> Result<DslInfo, FrixError> {
         },
         status: r.text("NewStatus")?.to_owned(),
         data_path: r.text("NewDataPath")?.to_owned(),
-        downstream: direzione("Downstream")?,
-        upstream: direzione("Upstream")?,
+        downstream: direction("Downstream")?,
+        upstream: direction("Upstream")?,
     })
 }
 
-/// `X_AVM-DE_GetDSLInfo`: la parte testuale (stato, modulazione, profilo).
+/// `X_AVM-DE_GetDSLInfo`: the text part (status, modulation, profile).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DslLine {
     /// `NewLinkStatus`.
     pub link_status: String,
-    /// `NewModulationType` (per esempio `VDSL`).
+    /// `NewModulationType` (for example `VDSL`).
     pub modulation: String,
-    /// `NewCurrentProfile` (per esempio `35b`).
+    /// `NewCurrentProfile` (for example `35b`).
     pub profile: String,
 }
 
@@ -82,7 +82,7 @@ pub async fn line(client: &Tr064Client) -> Result<DslLine, FrixError> {
     })
 }
 
-/// `GetStatisticsTotal`: contatori di errore della linea.
+/// `GetStatisticsTotal`: line error counters.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DslStatistics {
     /// `NewCRCErrors`.
@@ -118,16 +118,16 @@ pub async fn statistics(client: &Tr064Client) -> Result<DslStatistics, FrixError
     })
 }
 
-/// Valore numerico, `None` se il router lo restituisce vuoto.
-fn optional<T: FromStr>(r: &SoapResponse, nome: &str) -> Result<Option<T>, FrixError> {
-    if r.text(nome)?.trim().is_empty() {
+/// Numeric value, `None` if the router returns it empty.
+fn optional<T: FromStr>(r: &SoapResponse, name: &str) -> Result<Option<T>, FrixError> {
+    if r.text(name)?.trim().is_empty() {
         Ok(None)
     } else {
-        r.parse(nome).map(Some)
+        r.parse(name).map(Some)
     }
 }
 
-/// Valore in decimi di dB, convertito in dB.
-fn tenths(r: &SoapResponse, nome: &str) -> Result<Option<f64>, FrixError> {
-    Ok(optional::<i32>(r, nome)?.map(|v| f64::from(v) / 10.0))
+/// Value in tenths of dB, converted to dB.
+fn tenths(r: &SoapResponse, name: &str) -> Result<Option<f64>, FrixError> {
+    Ok(optional::<i32>(r, name)?.map(|v| f64::from(v) / 10.0))
 }

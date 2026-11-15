@@ -5,12 +5,12 @@ use crate::tr064::Tr064Client;
 
 const SERVICE: &str = "WANCommonInterfaceConfig:1";
 
-/// Proprietà del link WAN.
+/// WAN link properties.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LinkProperties {
-    /// `NewWANAccessType` (per esempio `DSL`, `Ethernet`).
+    /// `NewWANAccessType` (for example `DSL`, `Ethernet`).
     pub access_type: String,
-    /// `NewPhysicalLinkStatus` (per esempio `Up`).
+    /// `NewPhysicalLinkStatus` (for example `Up`).
     pub physical_status: String,
     /// `NewLayer1UpstreamMaxBitRate`, in bit/s.
     pub upstream_max_bps: u64,
@@ -18,16 +18,16 @@ pub struct LinkProperties {
     pub downstream_max_bps: u64,
 }
 
-/// I contatori di traffico TR-064 sono a 32 bit: ripartono da zero a questo valore.
+/// TR-064 traffic counters are 32-bit: they wrap to zero at this value.
 pub const COUNTER_WRAP: u64 = 1 << 32;
 
-/// Un gruppo di sincronizzazione del monitor online (il "grafico di traffico" della UI AVM).
-/// Le serie sono i valori degli ultimi secondi, come li restituisce il router.
+/// A sync group of the online monitor (the "traffic graph" of the AVM UI).
+/// The series are the values of the last seconds, as returned by the router.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OnlineMonitor {
     /// `NewSyncGroupName`.
     pub sync_group_name: String,
-    /// `NewSyncGroupMode` (per esempio `VDSL`).
+    /// `NewSyncGroupMode` (for example `VDSL`).
     pub sync_group_mode: String,
     /// `Newmax_ds`.
     pub max_downstream_bps: u64,
@@ -35,11 +35,11 @@ pub struct OnlineMonitor {
     pub max_upstream_bps: u64,
     /// `Newds_current_bps`.
     pub downstream_bps: Vec<u64>,
-    /// `Newmc_current_bps`: multicast in download (per esempio IPTV).
+    /// `Newmc_current_bps`: downstream multicast (for example IPTV).
     pub downstream_multicast_bps: Vec<u64>,
     /// `Newus_current_bps`.
     pub upstream_bps: Vec<u64>,
-    /// `Newprio_realtime_bps`: upload a priorità tempo reale.
+    /// `Newprio_realtime_bps`: upstream at real-time priority.
     pub upstream_realtime_bps: Vec<u64>,
     /// `Newprio_high_bps`.
     pub upstream_high_bps: Vec<u64>,
@@ -49,7 +49,7 @@ pub struct OnlineMonitor {
     pub upstream_low_bps: Vec<u64>,
 }
 
-/// `X_AVM-DE_GetOnlineMonitor` per il primo gruppo di sincronizzazione.
+/// `X_AVM-DE_GetOnlineMonitor` for the first sync group.
 pub async fn online_monitor(client: &Tr064Client) -> Result<OnlineMonitor, FrixError> {
     let r = client
         .call(
@@ -58,14 +58,14 @@ pub async fn online_monitor(client: &Tr064Client) -> Result<OnlineMonitor, FrixE
             &[("NewSyncGroupIndex", "0")],
         )
         .await?;
-    let serie = |nome: &str| -> Result<Vec<u64>, FrixError> {
-        r.text(nome)?
+    let series = |name: &str| -> Result<Vec<u64>, FrixError> {
+        r.text(name)?
             .split(',')
             .map(str::trim)
             .filter(|v| !v.is_empty())
             .map(|v| {
                 v.parse()
-                    .map_err(|_| FrixError::Parse(format!("valore non valido in {nome}")))
+                    .map_err(|_| FrixError::Parse(format!("invalid value in {name}")))
             })
             .collect()
     };
@@ -74,35 +74,35 @@ pub async fn online_monitor(client: &Tr064Client) -> Result<OnlineMonitor, FrixE
         sync_group_mode: r.text("NewSyncGroupMode")?.to_owned(),
         max_downstream_bps: r.parse("Newmax_ds")?,
         max_upstream_bps: r.parse("Newmax_us")?,
-        downstream_bps: serie("Newds_current_bps")?,
-        downstream_multicast_bps: serie("Newmc_current_bps")?,
-        upstream_bps: serie("Newus_current_bps")?,
-        upstream_realtime_bps: serie("Newprio_realtime_bps")?,
-        upstream_high_bps: serie("Newprio_high_bps")?,
-        upstream_default_bps: serie("Newprio_default_bps")?,
-        upstream_low_bps: serie("Newprio_low_bps")?,
+        downstream_bps: series("Newds_current_bps")?,
+        downstream_multicast_bps: series("Newmc_current_bps")?,
+        upstream_bps: series("Newus_current_bps")?,
+        upstream_realtime_bps: series("Newprio_realtime_bps")?,
+        upstream_high_bps: series("Newprio_high_bps")?,
+        upstream_default_bps: series("Newprio_default_bps")?,
+        upstream_low_bps: series("Newprio_low_bps")?,
     })
 }
 
-/// `GetTotalBytesSent`: byte inviati, modulo [`COUNTER_WRAP`].
+/// `GetTotalBytesSent`: bytes sent, modulo [`COUNTER_WRAP`].
 pub async fn total_bytes_sent(client: &Tr064Client) -> Result<u64, FrixError> {
     let r = client.call(SERVICE, "GetTotalBytesSent", &[]).await?;
     counter(r.parse("NewTotalBytesSent")?)
 }
 
-/// `GetTotalBytesReceived`: byte ricevuti, modulo [`COUNTER_WRAP`].
+/// `GetTotalBytesReceived`: bytes received, modulo [`COUNTER_WRAP`].
 pub async fn total_bytes_received(client: &Tr064Client) -> Result<u64, FrixError> {
     let r = client.call(SERVICE, "GetTotalBytesReceived", &[]).await?;
     counter(r.parse("NewTotalBytesReceived")?)
 }
 
-/// Un contatore a 32 bit oltre 2^31 può arrivare come intero con segno negativo:
-/// lo si riporta nell'intervallo `0..2^32` invece di restituire un valore negativo.
-fn counter(valore: i64) -> Result<u64, FrixError> {
-    let modulo = i64::try_from(COUNTER_WRAP)
-        .map_err(|_| FrixError::Parse("contatore fuori intervallo".into()))?;
-    u64::try_from(valore.rem_euclid(modulo))
-        .map_err(|_| FrixError::Parse("contatore fuori intervallo".into()))
+/// A 32-bit counter above 2^31 may arrive as a negative signed integer:
+/// it is mapped back into `0..2^32` instead of returning a negative value.
+fn counter(value: i64) -> Result<u64, FrixError> {
+    let modulus =
+        i64::try_from(COUNTER_WRAP).map_err(|_| FrixError::Parse("counter out of range".into()))?;
+    u64::try_from(value.rem_euclid(modulus))
+        .map_err(|_| FrixError::Parse("counter out of range".into()))
 }
 
 /// `GetCommonLinkProperties`.

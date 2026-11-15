@@ -1,7 +1,7 @@
-//! Un modulo per servizio TR-064, con funzioni tipizzate sopra [`Tr064Client`](crate::tr064::Tr064Client).
+//! One module per TR-064 service, with typed functions over [`Tr064Client`](crate::tr064::Tr064Client).
 //!
-//! Fuori da questi moduli non circolano stringhe grezze di servizi e azioni.
-//! Un'azione nuova si aggiunge qui e nel registro della Policy (`policy::registry`).
+//! Raw service and action strings do not leave these modules.
+//! A new action is added here and in the Policy registry (`policy::registry`).
 
 use crate::error::FrixError;
 
@@ -20,15 +20,15 @@ pub mod wan_connection;
 pub mod wan_dsl;
 pub mod wlan;
 
-/// Una lista letta dal router voce per voce (un'azione `Generic…` per indice), con un
-/// tetto esplicito di voci: un router anomalo non può causare migliaia di chiamate.
+/// A list read from the router entry by entry (one `Generic…` action per index), with an
+/// explicit entry cap: a misbehaving router cannot cause thousands of calls.
 #[derive(Debug, Clone, PartialEq)]
 pub struct EntryList<T> {
-    /// Le voci lette e interpretate, in ordine di indice.
+    /// The entries read and parsed, in index order.
     pub entries: Vec<T>,
-    /// Le voci saltate perché non interpretabili: le altre restano valide.
+    /// The entries skipped as unparsable: the others stay valid.
     pub skipped: Vec<SkippedEntry>,
-    /// `Some` se il tetto ha fermato la lettura prima della fine della lista.
+    /// `Some` if the cap stopped the read before the end of the list.
     pub truncation: Option<EntryTruncation>,
 }
 
@@ -43,32 +43,36 @@ impl<T> Default for EntryList<T> {
 }
 
 impl<T> EntryList<T> {
-    /// Aggiunge la voce `index`, oppure la segna come saltata se non è interpretabile
-    /// ([`FrixError::Parse`]). Ogni altro errore (trasporto, diritti, …) ferma la lettura.
-    pub(crate) fn push(&mut self, index: u16, voce: Result<T, FrixError>) -> Result<(), FrixError> {
-        match voce {
-            Ok(voce) => self.entries.push(voce),
+    /// Adds entry `index`, or marks it as skipped if it is unparsable
+    /// ([`FrixError::Parse`]). Any other error (transport, rights, …) stops the read.
+    pub(crate) fn push(
+        &mut self,
+        index: u16,
+        entry: Result<T, FrixError>,
+    ) -> Result<(), FrixError> {
+        match entry {
+            Ok(entry) => self.entries.push(entry),
             Err(FrixError::Parse(reason)) => self.skipped.push(SkippedEntry { index, reason }),
-            Err(errore) => return Err(errore),
+            Err(error) => return Err(error),
         }
         Ok(())
     }
 }
 
-/// Una voce saltata: il suo indice nel router e perché non è interpretabile.
+/// A skipped entry: its index in the router and why it is unparsable.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SkippedEntry {
-    /// Indice della voce (l'argomento `New…Index`).
+    /// Index of the entry (the `New…Index` argument).
     pub index: u16,
-    /// Il motivo, testo prodotto da `frix-core`.
+    /// The reason, text produced by `frix-core`.
     pub reason: String,
 }
 
-/// Il tetto di voci ha fermato la lettura.
+/// The entry cap stopped the read.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct EntryTruncation {
-    /// Il tetto: voci lette al massimo.
+    /// The cap: maximum entries read.
     pub limit: usize,
-    /// Voci non lette, se il router ne dichiara il totale; `None` se non si sa.
+    /// Entries not read, if the router declares the total; `None` if unknown.
     pub omitted: Option<usize>,
 }

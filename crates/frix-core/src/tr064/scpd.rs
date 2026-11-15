@@ -1,116 +1,114 @@
-//! Discovery: `tr64desc.xml` e SCPD, e validazione di azioni e argomenti (docs/PROJECT.md §5.1).
+//! Discovery: `tr64desc.xml` and SCPDs, and validation of actions and arguments (docs/PROJECT.md §5.1).
 
 use std::collections::BTreeMap;
 
 use super::xml::{self, Element};
 use crate::error::FrixError;
 
-/// Un servizio dichiarato in `tr64desc.xml`, con le azioni del suo SCPD.
+/// A service declared in `tr64desc.xml`, with the actions of its SCPD.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct ServiceDescription {
-    /// Per esempio `urn:dslforum-org:service:DeviceInfo:1`.
+    /// For example `urn:dslforum-org:service:DeviceInfo:1`.
     pub(crate) service_type: String,
     pub(crate) control_url: String,
     pub(crate) scpd_url: String,
     pub(crate) actions: BTreeMap<String, ActionDescription>,
 }
 
-/// Argomenti di un'azione come li dichiara lo SCPD.
+/// Arguments of an action as the SCPD declares them.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub(crate) struct ActionDescription {
     pub(crate) in_args: Vec<String>,
     pub(crate) out_args: Vec<String>,
 }
 
-/// I servizi elencati da `tr64desc.xml` (a qualunque livello di `deviceList`), senza azioni.
+/// The services listed by `tr64desc.xml` (at any level of `deviceList`), without actions.
 pub(crate) fn parse_device_description(
-    documento: &str,
+    document: &str,
 ) -> Result<Vec<ServiceDescription>, FrixError> {
-    let radice = xml::parse(documento)?;
-    radice
-        .descendants("service")
+    let root = xml::parse(document)?;
+    root.descendants("service")
         .into_iter()
-        .map(|servizio| {
-            let campo = |nome: &str| {
-                servizio
-                    .child_text(nome)
+        .map(|service| {
+            let field = |name: &str| {
+                service
+                    .child_text(name)
                     .map(|t| t.trim().to_owned())
                     .filter(|t| !t.is_empty())
-                    .ok_or_else(|| FrixError::Parse(format!("tr64desc.xml: servizio senza {nome}")))
+                    .ok_or_else(|| {
+                        FrixError::Parse(format!("tr64desc.xml: service without {name}"))
+                    })
             };
             Ok(ServiceDescription {
-                service_type: campo("serviceType")?,
-                control_url: campo("controlURL")?,
-                scpd_url: campo("SCPDURL")?,
+                service_type: field("serviceType")?,
+                control_url: field("controlURL")?,
+                scpd_url: field("SCPDURL")?,
                 actions: BTreeMap::new(),
             })
         })
         .collect()
 }
 
-/// Le azioni di uno SCPD, per nome.
-pub(crate) fn parse_scpd(
-    documento: &str,
-) -> Result<BTreeMap<String, ActionDescription>, FrixError> {
-    let radice = xml::parse(documento)?;
-    let Some(lista) = radice.child("actionList") else {
+/// The actions of an SCPD, by name.
+pub(crate) fn parse_scpd(document: &str) -> Result<BTreeMap<String, ActionDescription>, FrixError> {
+    let root = xml::parse(document)?;
+    let Some(list) = root.child("actionList") else {
         return Ok(BTreeMap::new());
     };
-    lista
-        .children
+    list.children
         .iter()
         .filter(|e| e.name == "action")
-        .map(|azione| {
-            let nome = azione
+        .map(|action| {
+            let name = action
                 .child_text("name")
                 .map(|t| t.trim().to_owned())
-                .ok_or_else(|| FrixError::Parse("SCPD: azione senza nome".into()))?;
-            Ok((nome, parse_arguments(azione)?))
+                .ok_or_else(|| FrixError::Parse("SCPD: action without name".into()))?;
+            Ok((name, parse_arguments(action)?))
         })
         .collect()
 }
 
-fn parse_arguments(azione: &Element) -> Result<ActionDescription, FrixError> {
-    let mut descrizione = ActionDescription::default();
-    let Some(lista) = azione.child("argumentList") else {
-        return Ok(descrizione);
+fn parse_arguments(action: &Element) -> Result<ActionDescription, FrixError> {
+    let mut description = ActionDescription::default();
+    let Some(list) = action.child("argumentList") else {
+        return Ok(description);
     };
-    for argomento in lista.children.iter().filter(|e| e.name == "argument") {
-        let nome = argomento
+    for argument in list.children.iter().filter(|e| e.name == "argument") {
+        let name = argument
             .child_text("name")
             .map(|t| t.trim().to_owned())
-            .ok_or_else(|| FrixError::Parse("SCPD: argomento senza nome".into()))?;
-        match argomento.child_text("direction").map(str::trim) {
-            Some("in") => descrizione.in_args.push(nome),
-            Some("out") => descrizione.out_args.push(nome),
-            altro => {
+            .ok_or_else(|| FrixError::Parse("SCPD: argument without name".into()))?;
+        match argument.child_text("direction").map(str::trim) {
+            Some("in") => description.in_args.push(name),
+            Some("out") => description.out_args.push(name),
+            other => {
                 return Err(FrixError::Parse(format!(
-                    "SCPD: direzione {altro:?} per l'argomento {nome}"
+                    "SCPD: direction {other:?} for argument {name}"
                 )));
             }
         }
     }
-    Ok(descrizione)
+    Ok(description)
 }
 
 impl ActionDescription {
-    /// Verifica che `args` siano esattamente gli argomenti `in` dello SCPD.
+    /// Checks that `args` are exactly the SCPD's `in` arguments.
     pub(crate) fn validate_in_args(
         &self,
         action: &str,
         args: &[(&str, &str)],
     ) -> Result<(), FrixError> {
-        for (nome, _) in args {
-            if !self.in_args.iter().any(|a| a == nome) {
+        for (name, _) in args {
+            if !self.in_args.iter().any(|a| a == name) {
                 return Err(FrixError::Validation(format!(
-                    "l'argomento {nome} non esiste nello SCPD di {action}"
+                    "argument {name} does not exist in the SCPD of {action}"
                 )));
             }
         }
-        for atteso in &self.in_args {
-            if !args.iter().any(|(nome, _)| nome == atteso) {
+        for expected in &self.in_args {
+            if !args.iter().any(|(name, _)| name == expected) {
                 return Err(FrixError::Validation(format!(
-                    "manca l'argomento {atteso} richiesto dallo SCPD di {action}"
+                    "missing argument {expected} required by the SCPD of {action}"
                 )));
             }
         }

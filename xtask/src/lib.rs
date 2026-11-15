@@ -1,11 +1,11 @@
-//! Comandi di sviluppo di `FrixMCP` (docs/PROJECT.md §6.1, §6.6).
+//! `FrixMCP` development commands (docs/PROJECT.md §6.1, §6.6).
 //!
-//! - [`oscura`]: sostituisce MAC, seriali, SSID, nomi, hostname e IP pubblico nelle
-//!   risposte registrate, lasciando valido l'XML o il JSON.
-//! - [`registra`]: esegue le [`letture`] dei tool attraverso un trasporto che registra
-//!   ogni scambio e lascia passare solo azioni di Level Read.
+//! - [`redact`]: replaces MACs, serials, SSIDs, names, hostnames and the public IP in
+//!   recorded responses, keeping the XML or JSON valid.
+//! - [`record`]: runs the tool [`reads`] through a transport that records every
+//!   exchange and lets through only Level Read actions.
 
-pub mod letture;
-pub mod oscura;
-pub mod registra;
-pub mod salva;
+pub mod reads;
+pub mod record;
+pub mod redact;
+pub mod save;

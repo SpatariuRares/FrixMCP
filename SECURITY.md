@@ -1,27 +1,27 @@
 # Security policy
 
-FrixMCP controlla un router domestico. Prendiamo sul serio i bug di sicurezza.
+FrixMCP controls a home router. We take security bugs seriously.
 
-## Segnalazioni
+## Reporting
 
-Apri una "security advisory" privata su GitHub (Security → Report a vulnerability) oppure scrivi all'indirizzo indicato nel profilo del maintainer. Non aprire issue pubbliche per vulnerabilità. Risposta entro 7 giorni.
+Open a private security advisory on GitHub (Security → Report a vulnerability) or write to the address listed on the maintainer's profile. Do not open public issues for vulnerabilities. Response within 7 days.
 
-## Modello di sicurezza (riassunto)
+## Security model (summary)
 
-- Trasporto MCP solo stdio; dashboard solo su 127.0.0.1 e in sola lettura.
-- Credenziali nel portachiavi di sistema (Keychain macOS, Secret Service su Linux); mai in file di configurazione o variabili d'ambiente in produzione.
-- TLS verso il router con certificato pinnato; nessuna opzione per disabilitare la verifica.
-- Tre livelli di tool: `read` (default), `write` (`--allow-writes`), `dangerous` (`--allow-dangerous` + Confirmation fuori banda dell'Operator). Nella versione attuale esistono solo i tool `read`.
-- Audit di ogni scrittura, con dati sensibili redatti: dà tracciabilità, non prova di manomissione (un processo dello stesso utente può riscriverlo).
-- L'output del router è trattato come dato non fidato (prompt injection).
+- MCP transport over stdio only; dashboard on 127.0.0.1 only, and read-only.
+- Credentials in the system keyring (macOS Keychain, Secret Service on Linux); never in configuration files or environment variables in production.
+- TLS to the router with a pinned certificate; no option to disable verification.
+- Three tool levels: `read` (default), `write` (`--allow-writes`), `dangerous` (`--allow-dangerous` + out-of-band Confirmation by the Operator). The current version has only `read` tools.
+- Audit of every write, with sensitive data redacted: it gives traceability, not tamper evidence (a process running as the same user can rewrite it).
+- Router output is treated as untrusted data (prompt injection).
 
-Dettagli in `docs/PROJECT.md` §7.
+Details in `docs/PROJECT.md` §7.
 
-## Deployment supportati
+## Supported deployments
 
-Le garanzie sopra limitano gli errori dell'IA e la prompt injection. Valgono solo se l'IA non può eseguire codice come il tuo utente macOS: Claude Desktop, oppure Claude Code con Bash negato o in sandbox e scritture limitate al progetto, con `frix-mcp` installato fuori dal repo. Dettagli in `docs/PROJECT.md` §7.0.
+The guarantees above limit AI mistakes and prompt injection. They hold only if the AI cannot run code as your macOS user: Claude Desktop, or Claude Code with Bash denied or sandboxed and writes limited to the project, with `frix-mcp` installed outside the repo. Details in `docs/PROJECT.md` §7.0.
 
-## Cosa è fuori ambito
+## Out of scope
 
-- Vulnerabilità del FRITZ!OS stesso (segnalarle ad AVM).
-- Attacchi da un processo già in esecuzione come lo stesso utente macOS, incluso un agent con accesso alla shell (`docs/PROJECT.md` §7.0, minaccia T13).
+- Vulnerabilities in FRITZ!OS itself (report them to AVM).
+- Attacks from a process already running as the same macOS user, including an agent with shell access (`docs/PROJECT.md` §7.0, threat T13).

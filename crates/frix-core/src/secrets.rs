@@ -1,36 +1,36 @@
-//! Password del Router Account dal portachiavi di sistema (docs/PROJECT.md §7.5, §13.5):
-//! su macOS il Keychain (voce "generic password"), su Linux il Secret Service
-//! (GNOME Keyring o `KWallet`) via `secret-tool`. In entrambi i casi la voce ha
-//! service `FrixMCP` e account = `username` del config.
+//! Router Account password from the system keyring (docs/PROJECT.md §7.5, §13.5):
+//! on macOS the Keychain ("generic password" item), on Linux the Secret Service
+//! (GNOME Keyring or `KWallet`) via `secret-tool`. In both cases the item has
+//! service `FrixMCP` and account = the config `username`.
 //!
-//! Scelta (docs/PROJECT.md §14.2.3): la CLI `/usr/bin/security` invece del crate
-//! `keyring`. Il crate 4.x non ha più un backend implicito: va scelto lo store
-//! `apple-native-keyring-store` (feature `keychain`, che porta `security-framework`
-//! e FFI) e registrato a runtime, ed esiste solo su macOS. La CLI non aggiunge
-//! dipendenze, compila ovunque (sugli altri sistemi la lettura fallisce con un
-//! errore chiaro) e legge la stessa voce del Keychain. Su Linux vale la stessa scelta
-//! con `/usr/bin/secret-tool` (libsecret). Non c'è alcun fallback a file o variabili
-//! d'ambiente.
+//! Choice (docs/PROJECT.md §14.2.3): the `/usr/bin/security` CLI instead of the
+//! `keyring` crate. Crate 4.x no longer has an implicit backend: the
+//! `apple-native-keyring-store` store must be chosen (feature `keychain`, which brings
+//! `security-framework` and FFI) and registered at runtime, and it exists only on macOS.
+//! The CLI adds no dependencies, compiles everywhere (on other systems the read fails
+//! with a clear error) and reads the same Keychain item. On Linux the same choice
+//! applies with `/usr/bin/secret-tool` (libsecret). There is no fallback to files or
+//! environment variables.
 
 use std::process::{Command, Stdio};
 
 use secrecy::SecretString;
 
-use crate::error::FrixError;
+use crate::error::{ConfigError, FrixError};
 
-/// `service` della voce del Keychain.
+/// `service` of the Keychain item.
 pub const KEYCHAIN_SERVICE: &str = "FrixMCP";
 
-/// Programma che legge la voce. Path assoluto: niente `PATH` da cui farsi sostituire
-/// il programma.
+/// Program that reads the item. Absolute path: no `PATH` through which the program
+/// could be replaced.
 #[cfg(not(target_os = "linux"))]
-const PROGRAMMA: &str = "/usr/bin/security";
+const PROGRAM: &str = "/usr/bin/security";
 #[cfg(target_os = "linux")]
-const PROGRAMMA: &str = "/usr/bin/secret-tool";
+const PROGRAM: &str = "/usr/bin/secret-tool";
 
-/// Argomenti di [`PROGRAMMA`] per leggere la password di `account`.
+/// Arguments of [`PROGRAM`] to read the password of `account`.
 #[cfg(not(target_os = "linux"))]
-fn argomenti(account: &str) -> [&str; 6] {
+fn args(account: &str) -> [&str; 6] {
     [
         "find-generic-password",
         "-s",
@@ -41,47 +41,51 @@ fn argomenti(account: &str) -> [&str; 6] {
     ]
 }
 #[cfg(target_os = "linux")]
-fn argomenti(account: &str) -> [&str; 5] {
+fn args(account: &str) -> [&str; 5] {
     ["lookup", "service", KEYCHAIN_SERVICE, "account", account]
 }
 
-/// Legge la password di `account` dal portachiavi. Gli errori non contengono mai l'output.
+/// Reads the password of `account` from the keyring. Errors never contain the output.
 pub fn keychain_password(account: &str) -> Result<SecretString, FrixError> {
-    let uscita = Command::new(PROGRAMMA)
-        .args(argomenti(account))
+    let output = Command::new(PROGRAM)
+        .args(args(account))
         .stdin(Stdio::null())
         .stderr(Stdio::null())
         .output()
-        .map_err(|e| FrixError::Config(format!("impossibile eseguire {PROGRAMMA}: {e}")))?;
-    password_from_output(uscita.status.success(), uscita.stdout, account)
+        .map_err(|e| {
+            FrixError::Config(ConfigError::KeyringUnavailable {
+                program: PROGRAM,
+                error: e.to_string(),
+            })
+        })?;
+    password_from_output(output.status.success(), output.stdout, account)
 }
 
-/// Interpreta l'output di `security find-generic-password -w` o di `secret-tool lookup`:
-/// la password, seguita da `\n` se c'è.
+/// Parses the output of `security find-generic-password -w` or `secret-tool lookup`:
+/// the password, followed by `\n` if present.
 fn password_from_output(
-    riuscito: bool,
+    succeeded: bool,
     stdout: Vec<u8>,
     account: &str,
 ) -> Result<SecretString, FrixError> {
-    let non_trovata = || {
-        FrixError::Config(format!(
-            "password del Router Account `{account}` non trovata nel portachiavi \
-             (service `{KEYCHAIN_SERVICE}`, account `{account}`)"
-        ))
+    let not_found = || {
+        FrixError::Config(ConfigError::PasswordNotFound {
+            account: account.to_owned(),
+        })
     };
-    if !riuscito {
-        return Err(non_trovata());
+    if !succeeded {
+        return Err(not_found());
     }
     let mut password = String::from_utf8(stdout).map_err(|_| {
-        FrixError::Config(format!(
-            "la voce del portachiavi `{KEYCHAIN_SERVICE}`/`{account}` non è testo UTF-8"
-        ))
+        FrixError::Config(ConfigError::PasswordNotUtf8 {
+            account: account.to_owned(),
+        })
     })?;
     if password.ends_with('\n') {
         password.pop();
     }
     if password.is_empty() {
-        return Err(non_trovata());
+        return Err(not_found());
     }
     Ok(SecretString::from(password))
 }
@@ -94,33 +98,33 @@ mod tests {
 
     use super::*;
 
-    const SEGRETO: &str = "Zx9-segreto-di-prova";
+    const SECRET: &str = "Zx9-test-secret";
 
     #[test]
-    fn toglie_solo_l_a_capo_finale() {
+    fn strips_only_the_trailing_newline() {
         let password =
-            password_from_output(true, format!("{SEGRETO} \n").into_bytes(), "frixmcp").unwrap();
-        assert_eq!(password.expose_secret(), format!("{SEGRETO} "));
-        assert!(!format!("{password:?}").contains(SEGRETO));
+            password_from_output(true, format!("{SECRET} \n").into_bytes(), "frixmcp").unwrap();
+        assert_eq!(password.expose_secret(), format!("{SECRET} "));
+        assert!(!format!("{password:?}").contains(SECRET));
     }
 
     #[test]
-    fn voce_assente_o_vuota_e_un_errore_senza_output() {
-        for (riuscito, stdout) in [(false, format!("{SEGRETO}\n")), (true, "\n".to_owned())] {
-            let errore =
-                password_from_output(riuscito, stdout.into_bytes(), "frixmcp").unwrap_err();
-            let messaggio = errore.to_string();
-            assert_eq!(errore.kind(), "config");
-            assert!(messaggio.contains("frixmcp") && messaggio.contains("FrixMCP"));
-            assert!(!messaggio.contains(SEGRETO));
-            assert!(!format!("{errore:?}").contains(SEGRETO));
+    fn missing_or_empty_item_is_an_error_without_output() {
+        for (succeeded, stdout) in [(false, format!("{SECRET}\n")), (true, "\n".to_owned())] {
+            let error =
+                password_from_output(succeeded, stdout.into_bytes(), "frixmcp").unwrap_err();
+            let message = error.to_string();
+            assert_eq!(error.kind(), "config");
+            assert!(message.contains("frixmcp") && message.contains("FrixMCP"));
+            assert!(!message.contains(SECRET));
+            assert!(!format!("{error:?}").contains(SECRET));
         }
     }
 
     #[test]
-    fn output_non_utf8_rifiutato_senza_mostrarlo() {
-        let errore = password_from_output(true, vec![0xff, 0xfe, b'Q'], "frixmcp").unwrap_err();
-        assert_eq!(errore.kind(), "config");
-        assert!(!format!("{errore} {errore:?}").contains('Q'));
+    fn non_utf8_output_rejected_without_showing_it() {
+        let error = password_from_output(true, vec![0xff, 0xfe, b'Q'], "frixmcp").unwrap_err();
+        assert_eq!(error.kind(), "config");
+        assert!(!format!("{error} {error:?}").contains('Q'));
     }
 }

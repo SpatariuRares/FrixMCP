@@ -1,7 +1,7 @@
-//! `HttpTransport`: l'unico seam fra `frix-core` e il router (docs/PROJECT.md §6.2).
+//! `HttpTransport`: the only seam between `frix-core` and the router (docs/PROJECT.md §6.2).
 //!
-//! Due implementazioni: [`RouterTransport`] (TLS pinnato e Digest) e
-//! [`FixtureTransport`] per i test, che risponde da file senza rete.
+//! Two implementations: [`RouterTransport`] (pinned TLS and Digest) and
+//! [`FixtureTransport`] for tests, which answers from files without network.
 
 mod digest;
 mod fixture;
@@ -17,46 +17,46 @@ pub use tls::{Fingerprint, TlsTrust};
 
 use crate::error::FrixError;
 
-/// Future restituito da [`HttpTransport::send`].
+/// Future returned by [`HttpTransport::send`].
 pub type SendFuture<'a> =
     Pin<Box<dyn Future<Output = Result<HttpResponse, FrixError>> + Send + 'a>>;
 
-/// Metodo HTTP di una richiesta verso il router.
+/// HTTP method of a request to the router.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Method {
-    /// Descrizioni (`tr64desc.xml`, SCPD) e liste `*ListPath`.
+    /// Descriptions (`tr64desc.xml`, SCPD) and `*ListPath` lists.
     Get,
-    /// Chiamate SOAP.
+    /// SOAP calls.
     Post,
 }
 
-/// Canale su cui il trasporto reale invia la richiesta (docs/PROJECT.md §5.1).
+/// Channel the real transport sends the request on (docs/PROJECT.md §5.1).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Channel {
-    /// HTTP sulla porta 49000, senza autenticazione: solo descrizioni, SCPD e `GetSecurityPort`.
+    /// HTTP on port 49000, unauthenticated: only descriptions, SCPDs and `GetSecurityPort`.
     Plain,
-    /// HTTPS sulla porta di `GetSecurityPort`, con TLS pinnato e Digest.
+    /// HTTPS on the `GetSecurityPort` port, with pinned TLS and Digest.
     Secure,
 }
 
-/// Richiesta verso il router, indipendente dall'host e dalla porta.
+/// Request to the router, independent of host and port.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HttpRequest {
-    /// Metodo HTTP.
+    /// HTTP method.
     pub method: Method,
-    /// Canale (HTTP in chiaro o HTTPS autenticato).
+    /// Channel (plain HTTP or authenticated HTTPS).
     pub channel: Channel,
-    /// Path assoluto sul router, per esempio `/upnp/control/deviceinfo`.
+    /// Absolute path on the router, for example `/upnp/control/deviceinfo`.
     pub path: String,
-    /// Valore dell'header `SOAPACTION` senza virgolette (`<serviceType>#<azione>`), solo per SOAP.
+    /// Value of the `SOAPACTION` header without quotes (`<serviceType>#<action>`), SOAP only.
     pub soap_action: Option<String>,
-    /// Corpo della richiesta (vuoto per `GET`).
+    /// Request body (empty for `GET`).
     pub body: String,
 }
 
 impl HttpRequest {
-    /// Servizio con istanza (`DeviceInfo:1`) e azione dell'header `SOAPACTION`, se la
-    /// richiesta è una chiamata SOAP TR-064 (`urn:dslforum-org:service:<servizio>#<azione>`).
+    /// Service with instance (`DeviceInfo:1`) and action of the `SOAPACTION` header, if the
+    /// request is a TR-064 SOAP call (`urn:dslforum-org:service:<service>#<action>`).
     #[must_use]
     pub fn soap_service_action(&self) -> Option<(&str, &str)> {
         self.soap_action
@@ -66,17 +66,17 @@ impl HttpRequest {
     }
 }
 
-/// Risposta del router.
+/// Router response.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HttpResponse {
-    /// Stato HTTP.
+    /// HTTP status.
     pub status: u16,
-    /// Corpo della risposta.
+    /// Response body.
     pub body: String,
 }
 
 impl HttpResponse {
-    /// Risposta `200 OK` con il corpo dato.
+    /// `200 OK` response with the given body.
     #[must_use]
     pub fn ok(body: impl Into<String>) -> Self {
         Self {
@@ -86,8 +86,8 @@ impl HttpResponse {
     }
 }
 
-/// Un'operazione asincrona richiesta → risposta verso il router.
+/// An asynchronous request → response operation against the router.
 pub trait HttpTransport: std::fmt::Debug + Send + Sync {
-    /// Invia la richiesta e restituisce la risposta, qualunque sia lo stato HTTP.
+    /// Sends the request and returns the response, whatever the HTTP status.
     fn send(&self, request: HttpRequest) -> SendFuture<'_>;
 }

@@ -1,7 +1,7 @@
-//! `X_AVM-DE_Homeauto:1`: gli `SmartHome` Device del router (docs/PROJECT.md §4.2.8).
+//! `X_AVM-DE_Homeauto:1`: the router's `SmartHome` Devices (docs/PROJECT.md §4.2.8).
 //!
-//! Unità di `x_homeauto.pdf` (AVM): potenza in 1/100 W, energia in Wh, temperature in
-//! 0,1 °C. Da verificare sul router reale con le fixture registrate (#15).
+//! Units from `x_homeauto.pdf` (AVM): power in 1/100 W, energy in Wh, temperatures in
+//! 0.1 °C. To be verified on the real router with recorded fixtures (#15).
 
 use crate::error::FrixError;
 use crate::services::{EntryList, EntryTruncation};
@@ -9,13 +9,13 @@ use crate::tr064::{SoapResponse, Tr064Client};
 
 const SERVICE: &str = "X_AVM-DE_Homeauto:1";
 
-/// Fault con cui il router risponde a un indice oltre l'ultimo `SmartHome` Device.
+/// Fault the router returns for an index past the last `SmartHome` Device.
 const SPECIFIED_ARRAY_INDEX_INVALID: u16 = 713;
 
-/// Uno `SmartHome` Device, identificato dall'AIN. I testi sono dati non fidati.
+/// A `SmartHome` Device, identified by its AIN. Texts are untrusted data.
 #[derive(Debug, Clone, PartialEq)]
 pub struct SmartHomeDevice {
-    /// `NewAIN`: l'identità dello `SmartHome` Device.
+    /// `NewAIN`: the identity of the `SmartHome` Device.
     pub ain: String,
     /// `NewDeviceId`.
     pub device_id: u16,
@@ -29,48 +29,48 @@ pub struct SmartHomeDevice {
     pub firmware: String,
     /// `NewFunctionBitMask`.
     pub function_bit_mask: u16,
-    /// `NewPresent` in minuscolo: `connected`, `disconnected`, `registrered`, `unknown`.
+    /// `NewPresent` in lowercase: `connected`, `disconnected`, `registrered`, `unknown`.
     pub present: String,
-    /// Presente solo se `NewSwitchIsEnabled` è `ENABLED`.
+    /// Present only if `NewSwitchIsEnabled` is `ENABLED`.
     pub switch: Option<Switch>,
-    /// Presente solo se `NewMultimeterIsEnabled` è `ENABLED`.
+    /// Present only if `NewMultimeterIsEnabled` is `ENABLED`.
     pub power_meter: Option<PowerMeter>,
-    /// Presente solo se `NewTemperatureIsEnabled` è `ENABLED`.
+    /// Present only if `NewTemperatureIsEnabled` is `ENABLED`.
     pub temperature: Option<Temperature>,
-    /// Presente solo se `NewHkrIsEnabled` è `ENABLED`.
+    /// Present only if `NewHkrIsEnabled` is `ENABLED`.
     pub thermostat: Option<Thermostat>,
 }
 
-/// Interruttore (presa). Stato `None` se il router lo dà come non valido.
+/// Switch (plug). State `None` if the router reports it as invalid.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Switch {
-    /// `NewSwitchState` in minuscolo (`on`, `off`, …).
+    /// `NewSwitchState` in lowercase (`on`, `off`, …).
     pub state: Option<String>,
-    /// `NewSwitchMode` in minuscolo (`auto`, `manual`).
+    /// `NewSwitchMode` in lowercase (`auto`, `manual`).
     pub mode: Option<String>,
-    /// `NewSwitchLock`: comando manuale sull'apparecchio bloccato.
+    /// `NewSwitchLock`: manual control on the device is locked.
     pub locked: bool,
 }
 
-/// Misuratore di consumo. Valori `None` se il router li dà come non validi.
+/// Power meter. Values `None` if the router reports them as invalid.
 #[derive(Debug, Clone, PartialEq)]
 pub struct PowerMeter {
-    /// `NewMultimeterPower`, convertita in W.
+    /// `NewMultimeterPower`, converted to W.
     pub power_w: Option<f64>,
     /// `NewMultimeterEnergy`, in Wh.
     pub energy_wh: Option<u32>,
 }
 
-/// Sensore di temperatura. Valori `None` se il router li dà come non validi.
+/// Temperature sensor. Values `None` if the router reports them as invalid.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Temperature {
-    /// `NewTemperatureCelsius`, convertita in °C.
+    /// `NewTemperatureCelsius`, converted to °C.
     pub celsius: Option<f64>,
-    /// `NewTemperatureOffset`, convertito in °C.
+    /// `NewTemperatureOffset`, converted to °C.
     pub offset_celsius: Option<f64>,
 }
 
-/// Termostato (HKR). Tutto `None` se il router lo dà come non valido.
+/// Thermostat (HKR). All `None` if the router reports it as invalid.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Thermostat {
     /// `NewHkrIsTemperature`, in °C.
@@ -83,33 +83,33 @@ pub struct Thermostat {
     pub comfort: Option<Setpoint>,
 }
 
-/// Una temperatura impostata del termostato: valvola chiusa, aperta o regolata.
+/// A thermostat setpoint: valve closed, open or regulated.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Setpoint {
-    /// `closed`, `open` o `temp` (solo con `temp` vale [`Setpoint::celsius`]).
+    /// `closed`, `open` or `temp` ([`Setpoint::celsius`] is set only with `temp`).
     pub valve: String,
-    /// La temperatura in °C, solo con valvola `temp`.
+    /// The temperature in °C, only with valve `temp`.
     pub celsius: Option<f64>,
 }
 
-/// `SmartHome` Device letti al massimo. FRITZ!OS ne gestisce qualche decina; senza
-/// tetto un router che non risponde mai 713 costerebbe 65536 chiamate.
+/// Maximum `SmartHome` Devices read. FRITZ!OS handles a few dozen; without a
+/// cap a router that never answers 713 would cost 65536 calls.
 pub const MAX_DEVICES: usize = 256;
 
-/// Gli `SmartHome` Device, per indice da 0 finché il router risponde 713, al massimo
-/// [`MAX_DEVICES`]. Una voce non interpretabile si salta e si dichiara.
+/// The `SmartHome` Devices, by index from 0 until the router answers 713, at most
+/// [`MAX_DEVICES`]. An unparsable entry is skipped and reported.
 pub async fn list(client: &Tr064Client) -> Result<EntryList<SmartHomeDevice>, FrixError> {
     let mut devices = EntryList::default();
-    for indice in (0..=u16::MAX).take(MAX_DEVICES) {
+    for index in (0..=u16::MAX).take(MAX_DEVICES) {
         match client
             .call(
                 SERVICE,
                 "GetGenericDeviceInfos",
-                &[("NewIndex", &indice.to_string())],
+                &[("NewIndex", &index.to_string())],
             )
             .await
         {
-            Ok(r) => devices.push(indice, device(&r))?,
+            Ok(r) => devices.push(index, device(&r))?,
             Err(FrixError::Soap {
                 code: SPECIFIED_ARRAY_INDEX_INVALID,
                 ..
@@ -117,7 +117,7 @@ pub async fn list(client: &Tr064Client) -> Result<EntryList<SmartHomeDevice>, Fr
             Err(e) => return Err(e),
         }
     }
-    // il tetto ha fermato la lettura: quante voci restino il router non lo dice
+    // the cap stopped the read: the router does not say how many entries remain
     devices.truncation = Some(EntryTruncation {
         limit: MAX_DEVICES,
         omitted: None,
@@ -126,23 +126,23 @@ pub async fn list(client: &Tr064Client) -> Result<EntryList<SmartHomeDevice>, Fr
 }
 
 fn device(r: &SoapResponse) -> Result<SmartHomeDevice, FrixError> {
-    let testo = |nome: &str| r.text(nome).map(|t| t.trim().to_owned());
-    let abilitato = |nome: &str| r.text(nome).is_ok_and(|t| t.trim() == "ENABLED");
-    let valido = |nome: &str| r.text(nome).is_ok_and(|t| t.trim() == "VALID");
-    let decimi = |nome: &str| r.parse::<i32>(nome).map(|v| f64::from(v) / 10.0);
+    let text = |name: &str| r.text(name).map(|t| t.trim().to_owned());
+    let is_enabled = |name: &str| r.text(name).is_ok_and(|t| t.trim() == "ENABLED");
+    let is_valid = |name: &str| r.text(name).is_ok_and(|t| t.trim() == "VALID");
+    let tenths = |name: &str| r.parse::<i32>(name).map(|v| f64::from(v) / 10.0);
 
-    let switch = if abilitato("NewSwitchIsEnabled") {
-        let valid = valido("NewSwitchIsValid");
+    let switch = if is_enabled("NewSwitchIsEnabled") {
+        let valid = is_valid("NewSwitchIsValid");
         Some(Switch {
-            state: valid.then(|| minuscolo(r, "NewSwitchState")).transpose()?,
-            mode: valid.then(|| minuscolo(r, "NewSwitchMode")).transpose()?,
+            state: valid.then(|| lowercase(r, "NewSwitchState")).transpose()?,
+            mode: valid.then(|| lowercase(r, "NewSwitchMode")).transpose()?,
             locked: r.flag("NewSwitchLock")?,
         })
     } else {
         None
     };
-    let power_meter = if abilitato("NewMultimeterIsEnabled") {
-        let valid = valido("NewMultimeterIsValid");
+    let power_meter = if is_enabled("NewMultimeterIsEnabled") {
+        let valid = is_valid("NewMultimeterIsValid");
         Some(PowerMeter {
             power_w: valid
                 .then(|| {
@@ -157,31 +157,31 @@ fn device(r: &SoapResponse) -> Result<SmartHomeDevice, FrixError> {
     } else {
         None
     };
-    let temperature = if abilitato("NewTemperatureIsEnabled") {
-        let valid = valido("NewTemperatureIsValid");
+    let temperature = if is_enabled("NewTemperatureIsEnabled") {
+        let valid = is_valid("NewTemperatureIsValid");
         Some(Temperature {
-            celsius: valid.then(|| decimi("NewTemperatureCelsius")).transpose()?,
-            offset_celsius: valid.then(|| decimi("NewTemperatureOffset")).transpose()?,
+            celsius: valid.then(|| tenths("NewTemperatureCelsius")).transpose()?,
+            offset_celsius: valid.then(|| tenths("NewTemperatureOffset")).transpose()?,
         })
     } else {
         None
     };
-    let thermostat = if abilitato("NewHkrIsEnabled") {
-        let valid = valido("NewHkrIsValid");
-        let setpoint = |valvola: &str, gradi: &str| -> Result<Option<Setpoint>, FrixError> {
+    let thermostat = if is_enabled("NewHkrIsEnabled") {
+        let valid = is_valid("NewHkrIsValid");
+        let setpoint = |valve_arg: &str, temp_arg: &str| -> Result<Option<Setpoint>, FrixError> {
             if !valid {
                 return Ok(None);
             }
-            let valve = minuscolo(r, valvola)?;
+            let valve = lowercase(r, valve_arg)?;
             let celsius = if valve == "temp" {
-                Some(decimi(gradi)?)
+                Some(tenths(temp_arg)?)
             } else {
                 None
             };
             Ok(Some(Setpoint { valve, celsius }))
         };
         Some(Thermostat {
-            current_celsius: valid.then(|| decimi("NewHkrIsTemperature")).transpose()?,
+            current_celsius: valid.then(|| tenths("NewHkrIsTemperature")).transpose()?,
             target: setpoint("NewHkrSetVentilStatus", "NewHkrSetTemperature")?,
             reduced: setpoint("NewHkrReduceVentilStatus", "NewHkrReduceTemperature")?,
             comfort: setpoint("NewHkrComfortVentilStatus", "NewHkrComfortTemperature")?,
@@ -191,14 +191,14 @@ fn device(r: &SoapResponse) -> Result<SmartHomeDevice, FrixError> {
     };
 
     Ok(SmartHomeDevice {
-        ain: testo("NewAIN")?,
+        ain: text("NewAIN")?,
         device_id: r.parse("NewDeviceId")?,
-        name: testo("NewDeviceName")?,
-        product: testo("NewProductName")?,
-        manufacturer: testo("NewManufacturer")?,
-        firmware: testo("NewFirmwareVersion")?,
+        name: text("NewDeviceName")?,
+        product: text("NewProductName")?,
+        manufacturer: text("NewManufacturer")?,
+        firmware: text("NewFirmwareVersion")?,
         function_bit_mask: r.parse("NewFunctionBitMask")?,
-        present: minuscolo(r, "NewPresent")?,
+        present: lowercase(r, "NewPresent")?,
         switch,
         power_meter,
         temperature,
@@ -206,6 +206,6 @@ fn device(r: &SoapResponse) -> Result<SmartHomeDevice, FrixError> {
     })
 }
 
-fn minuscolo(r: &SoapResponse, nome: &str) -> Result<String, FrixError> {
-    Ok(r.text(nome)?.trim().to_lowercase())
+fn lowercase(r: &SoapResponse, name: &str) -> Result<String, FrixError> {
+    Ok(r.text(name)?.trim().to_lowercase())
 }

@@ -14,8 +14,8 @@ use crate::server::FrixServer;
 #[derive(Debug, Default, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 struct AccessControlParams {
-    /// MAC dell'Host di cui leggere lo stato di blocco, per esempio `AA:BB:CC:DD:EE:FF`.
-    /// Gli Host si indicano solo per MAC, mai per IP. Senza: solo i profili di filtro.
+    /// MAC of the Host whose block state to read, for example `AA:BB:CC:DD:EE:FF`.
+    /// Hosts are identified only by MAC, never by IP. Omitted: only the filter profiles.
     #[serde(default)]
     mac: Option<String>,
 }
@@ -23,7 +23,7 @@ struct AccessControlParams {
 #[derive(Debug, Serialize)]
 struct AccessControl {
     profiles: Vec<ProfileOut>,
-    /// Solo con `mac`.
+    /// Only with `mac`.
     #[serde(skip_serializing_if = "Option::is_none")]
     host: Option<HostAccessOut>,
 }
@@ -72,11 +72,11 @@ impl FrixServer {
     #[tool(
         name = "get_access_control",
         description = concat!(
-            "Profili di filtro del controllo accessi (ID e nome) e, con `mac`, lo stato di blocco di quell'Host: accesso a Internet, blocco manuale, profilo, tempo usato e massimo, ticket. L'IP dell'Host si ricava dalla lista host al momento della chiamata. ",
-            dati_della_rete!()
+            "Parental control filter profiles (ID and name) and, with `mac`, the block state of that Host: Internet access, manual block, profile, time used and maximum, tickets. The Host's IP is looked up in the host list at call time. ",
+            network_data!()
         ),
         annotations(
-            title = "Controllo accessi",
+            title = "Parental control",
             read_only_hint = true,
             destructive_hint = false,
             idempotent_hint = true,
@@ -95,7 +95,7 @@ impl FrixServer {
 
 impl FrixServer {
     async fn access_control(&self, mac: Option<&str>) -> Result<AccessControl, FrixError> {
-        // il MAC si valida e si risolve prima di qualunque chiamata a HostFilter
+        // the MAC is validated and resolved before any call to HostFilter
         let host = match mac {
             Some(mac) => {
                 let mac: Mac = mac.parse()?;

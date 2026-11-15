@@ -1,13 +1,13 @@
-//! `WLANConfiguration:1..3`: le Wi-Fi Network del router (docs/PROJECT.md §4.2.3).
+//! `WLANConfiguration:1..3`: the router's Wi-Fi Networks (docs/PROJECT.md §4.2.3).
 //!
-//! Quale istanza `WLANConfiguration` sia quale Wi-Fi Network non si presume
-//! (docs/PROJECT.md §4.1): lo dicono `X_AVM-DE_APType` di `X_AVM-DE_GetWLANExtInfo`
-//! e la Band dell'istanza, letti a ogni chiamata. Il 7590 con FRITZ!OS 8.25 risponde
-//! `unknown` come `X_AVM-DE_FrequencyBand` sulla rete Ospiti (§14.3): la Band si ricava
-//! allora dal canale.
+//! Which `WLANConfiguration` instance is which Wi-Fi Network is not assumed
+//! (docs/PROJECT.md §4.1): `X_AVM-DE_APType` from `X_AVM-DE_GetWLANExtInfo` and the
+//! instance's Band tell, read on every call. The 7590 with FRITZ!OS 8.25 answers
+//! `unknown` as `X_AVM-DE_FrequencyBand` on the guest network (§14.3): the Band is then
+//! derived from the channel.
 //!
-//! `GetSecurityKeys` e `X_AVM-DE_GetWLANHybridMode` espongono chiavi Wi-Fi: questo
-//! modulo non le chiama, e la Policy le nega comunque (Level Dangerous).
+//! `GetSecurityKeys` and `X_AVM-DE_GetWLANHybridMode` expose Wi-Fi keys: this
+//! module does not call them, and the Policy denies them anyway (Level Dangerous).
 
 use std::fmt;
 use std::str::FromStr;
@@ -21,22 +21,22 @@ use crate::tr064::{Tr064Client, xml_list_items};
 
 const SERVICE: &str = "WLANConfiguration";
 
-/// Una delle tre Wi-Fi Network del router.
+/// One of the router's three Wi-Fi Networks.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum WifiNetwork {
-    /// Rete principale a 2,4 GHz (`main_2g`).
+    /// Main network at 2.4 GHz (`main_2g`).
     Main2g,
-    /// Rete principale a 5 GHz (`main_5g`).
+    /// Main network at 5 GHz (`main_5g`).
     Main5g,
-    /// Rete Ospiti (`guest`).
+    /// Guest network (`guest`).
     Guest,
 }
 
 impl WifiNetwork {
-    /// Le tre Wi-Fi Network, nell'ordine in cui si restituiscono.
+    /// The three Wi-Fi Networks, in the order they are returned.
     pub const ALL: [Self; 3] = [Self::Main2g, Self::Main5g, Self::Guest];
 
-    /// Nome stabile verso l'Agent: `main_2g`, `main_5g`, `guest`.
+    /// Stable name for the Agent: `main_2g`, `main_5g`, `guest`.
     #[must_use]
     pub fn as_str(self) -> &'static str {
         match self {
@@ -46,13 +46,13 @@ impl WifiNetwork {
         }
     }
 
-    /// Filtro dell'Agent: `main_2g`, `main_5g`, `guest` oppure `all` (le tre reti).
-    /// Ogni altro valore è un errore di validazione.
-    pub fn parse_filter(valore: &str) -> Result<Vec<Self>, FrixError> {
-        if valore == "all" {
+    /// Agent filter: `main_2g`, `main_5g`, `guest` or `all` (the three networks).
+    /// Any other value is a validation error.
+    pub fn parse_filter(value: &str) -> Result<Vec<Self>, FrixError> {
+        if value == "all" {
             Ok(Self::ALL.to_vec())
         } else {
-            valore.parse().map(|rete| vec![rete])
+            value.parse().map(|net| vec![net])
         }
     }
 }
@@ -60,13 +60,13 @@ impl WifiNetwork {
 impl FromStr for WifiNetwork {
     type Err = FrixError;
 
-    fn from_str(valore: &str) -> Result<Self, Self::Err> {
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
         Self::ALL
             .into_iter()
-            .find(|rete| rete.as_str() == valore)
+            .find(|net| net.as_str() == value)
             .ok_or_else(|| {
                 FrixError::Validation(format!(
-                    "Wi-Fi Network non valida: {valore:?} (ammessi: main_2g, main_5g, guest, all)"
+                    "invalid Wi-Fi Network: {value:?} (allowed: main_2g, main_5g, guest, all)"
                 ))
             })
     }
@@ -78,7 +78,7 @@ impl fmt::Display for WifiNetwork {
     }
 }
 
-/// La Band su cui trasmette una Wi-Fi Network (`X_AVM-DE_FrequencyBand`).
+/// The Band a Wi-Fi Network transmits on (`X_AVM-DE_FrequencyBand`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Band {
     /// `2400`.
@@ -87,13 +87,13 @@ pub enum Band {
     Ghz5,
     /// `6000`.
     Ghz6,
-    /// `unknown` o un valore che lo SCPD non prevede.
+    /// `unknown` or a value the SCPD does not define.
     Unknown,
 }
 
 impl Band {
-    fn from_router(valore: &str) -> Self {
-        match valore.trim() {
+    fn from_router(value: &str) -> Self {
+        match value.trim() {
             "2400" => Self::Ghz2_4,
             "5000" => Self::Ghz5,
             "6000" => Self::Ghz6,
@@ -101,18 +101,18 @@ impl Band {
         }
     }
 
-    /// La Band di un canale: 1-14 esistono solo a 2,4 GHz, 32-177 solo a 5 GHz.
-    /// Anche i canali a 6 GHz sono numerati da 1, quindi su un router con una radio
-    /// a 6 GHz questa regola non basterebbe; il 7590 non ne ha.
-    fn from_channel(canale: u8) -> Self {
-        match canale {
+    /// The Band of a channel: 1-14 exist only at 2.4 GHz, 32-177 only at 5 GHz.
+    /// 6 GHz channels are also numbered from 1, so on a router with a 6 GHz radio
+    /// this rule would not suffice; the 7590 has none.
+    fn from_channel(channel: u8) -> Self {
+        match channel {
             1..=14 => Self::Ghz2_4,
             32..=177 => Self::Ghz5,
             _ => Self::Unknown,
         }
     }
 
-    /// Nome stabile verso l'Agent: `2.4GHz`, `5GHz`, `6GHz`, `unknown`.
+    /// Stable name for the Agent: `2.4GHz`, `5GHz`, `6GHz`, `unknown`.
     #[must_use]
     pub fn as_str(self) -> &'static str {
         match self {
@@ -124,57 +124,57 @@ impl Band {
     }
 }
 
-/// Stato di una Wi-Fi Network.
+/// Status of a Wi-Fi Network.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WifiStatus {
-    /// La Wi-Fi Network, ricavata dai dati del router.
+    /// The Wi-Fi Network, derived from the router's data.
     pub network: WifiNetwork,
     /// `NewEnable`.
     pub enabled: bool,
     /// `NewStatus` (`Up`, `Disabled`).
     pub status: String,
-    /// `NewSSID`: dato non fidato.
+    /// `NewSSID`: untrusted data.
     pub ssid: String,
     /// `NewX_AVM-DE_FrequencyBand`.
     pub band: Band,
-    /// `NewChannel` di `GetChannelInfo`.
+    /// `NewChannel` from `GetChannelInfo`.
     pub channel: u8,
     /// `NewX_AVM-DE_AutoChannelEnabled`.
     pub auto_channel: bool,
     /// `NewStandard` (`n`, `ac`, `ax`, …).
     pub standard: String,
-    /// `NewBeaconType`: la cifratura (`11i`, `11iandWPA3`, …).
+    /// `NewBeaconType`: the encryption (`11i`, `11iandWPA3`, …).
     pub encryption: String,
     /// `NewMaxBitRate`.
     pub max_bit_rate: String,
-    /// `NewTotalAssociations`: client associati.
+    /// `NewTotalAssociations`: associated clients.
     pub clients: u16,
-    /// Solo per la Wi-Fi Network Ospiti: timeout e isolamento.
+    /// Only for the guest Wi-Fi Network: timeout and isolation.
     pub guest: Option<GuestSettings>,
 }
 
-/// Impostazioni della Wi-Fi Network Ospiti (`X_AVM-DE_GetWLANExtInfo`).
+/// Settings of the guest Wi-Fi Network (`X_AVM-DE_GetWLANExtInfo`).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GuestSettings {
-    /// `NewX_AVM-DE_TimeoutActive`: la rete si spegne da sola.
+    /// `NewX_AVM-DE_TimeoutActive`: the network turns itself off.
     pub timeout_active: bool,
-    /// `NewX_AVM-DE_Timeout`, in minuti; `None` se il router non dà un numero.
+    /// `NewX_AVM-DE_Timeout`, in minutes; `None` if the router gives no number.
     pub timeout_minutes: Option<u32>,
-    /// `NewX_AVM-DE_TimeRemain`, in minuti; `None` se il router non dà un numero.
+    /// `NewX_AVM-DE_TimeRemain`, in minutes; `None` if the router gives no number.
     pub time_remaining_minutes: Option<u32>,
-    /// `NewX_AVM-DE_NoForcedOff`: il timeout non scatta finché ci sono client.
+    /// `NewX_AVM-DE_NoForcedOff`: the timeout does not fire while clients are connected.
     pub no_forced_off: bool,
-    /// `NewX_AVM-DE_UserIsolation`: i client non si vedono fra loro.
+    /// `NewX_AVM-DE_UserIsolation`: clients cannot see each other.
     pub user_isolation: bool,
 }
 
-/// Un client associato a una Wi-Fi Network (`X_AVM-DE_GetWLANDeviceListPath` o
+/// A client associated with a Wi-Fi Network (`X_AVM-DE_GetWLANDeviceListPath` or
 /// `GetGenericAssociatedDeviceInfo`).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WifiClient {
-    /// La Wi-Fi Network a cui è associato.
+    /// The Wi-Fi Network it is associated with.
     pub network: WifiNetwork,
-    /// La Band della Wi-Fi Network.
+    /// The Band of the Wi-Fi Network.
     pub band: Band,
     /// `NewAssociatedDeviceMACAddress`.
     pub mac: Mac,
@@ -184,119 +184,120 @@ pub struct WifiClient {
     pub authenticated: bool,
     /// `NewX_AVM-DE_Speed`, in Mbit/s.
     pub speed_mbps: u16,
-    /// `NewX_AVM-DE_SignalStrength`, così come lo riporta il router.
+    /// `NewX_AVM-DE_SignalStrength`, as reported by the router.
     pub signal_strength: u8,
     /// `NewX_AVM-DE_ChannelWidth`, in MHz.
     pub channel_width_mhz: u16,
 }
 
-/// Una Wi-Fi Network trovata nel router, con il servizio `WLANConfiguration:N` che la serve.
-struct ReteTrovata {
+/// A Wi-Fi Network found on the router, with the `WLANConfiguration:N` service serving it.
+struct FoundNetwork {
     network: WifiNetwork,
     service: String,
     band: Band,
     guest: Option<GuestSettings>,
 }
 
-/// Stato delle Wi-Fi Network richieste, nell'ordine di [`WifiNetwork::ALL`].
+/// Status of the requested Wi-Fi Networks, in [`WifiNetwork::ALL`] order.
 ///
-/// `GetInfo`, `GetChannelInfo` e `GetTotalAssociations` su ogni istanza richiesta.
+/// `GetInfo`, `GetChannelInfo` and `GetTotalAssociations` on each requested instance.
 pub async fn status(
     client: &Tr064Client,
     networks: &[WifiNetwork],
 ) -> Result<Vec<WifiStatus>, FrixError> {
-    let mut risultato = Vec::new();
-    for rete in reti_trovate(client, networks).await? {
-        let info = client.call(&rete.service, "GetInfo", &[]).await?;
-        let canale = client.call(&rete.service, "GetChannelInfo", &[]).await?;
-        risultato.push(WifiStatus {
-            network: rete.network,
+    let mut result = Vec::new();
+    for net in found_networks(client, networks).await? {
+        let info = client.call(&net.service, "GetInfo", &[]).await?;
+        let channel_info = client.call(&net.service, "GetChannelInfo", &[]).await?;
+        result.push(WifiStatus {
+            network: net.network,
             enabled: info.flag("NewEnable")?,
             status: info.text("NewStatus")?.to_owned(),
             ssid: info.text("NewSSID")?.to_owned(),
-            band: rete.band,
-            channel: canale.parse("NewChannel")?,
-            auto_channel: canale.flag("NewX_AVM-DE_AutoChannelEnabled")?,
+            band: net.band,
+            channel: channel_info.parse("NewChannel")?,
+            auto_channel: channel_info.flag("NewX_AVM-DE_AutoChannelEnabled")?,
             standard: info.text("NewStandard")?.to_owned(),
             encryption: info.text("NewBeaconType")?.to_owned(),
             max_bit_rate: info.text("NewMaxBitRate")?.to_owned(),
-            clients: totale_associazioni(client, &rete.service).await?,
-            guest: rete.guest,
+            clients: total_associations(client, &net.service).await?,
+            guest: net.guest,
         });
     }
-    Ok(risultato)
+    Ok(result)
 }
 
-/// I client associati alle Wi-Fi Network richieste.
+/// The clients associated with the requested Wi-Fi Networks.
 ///
-/// Prima `X_AVM-DE_GetWLANDeviceListPath` e `GET` della lista (una chiamata per tutti
-/// i client). Il 7590 dà a ogni istanza lo stesso path, con i client di tutte le Wi-Fi
-/// Network (§14.3): la lista si legge una volta sola e ogni voce va alla Wi-Fi Network
-/// indicata da `AssociatedDeviceGuest` e `AssociatedDeviceChannel`. Se la lista
-/// fallisce, `GetTotalAssociations` e `GetGenericAssociatedDeviceInfo` per ogni indice
-/// di ogni istanza (§8.1); se falliscono entrambe, l'errore è quello della lista.
+/// First `X_AVM-DE_GetWLANDeviceListPath` and a `GET` of the list (one call for all
+/// clients). The 7590 gives every instance the same path, with the clients of all Wi-Fi
+/// Networks (§14.3): the list is read once and each entry goes to the Wi-Fi Network
+/// given by `AssociatedDeviceGuest` and `AssociatedDeviceChannel`. If the list
+/// fails, `GetTotalAssociations` and `GetGenericAssociatedDeviceInfo` for each index
+/// of each instance (§8.1); if both fail, the error is the list's.
 pub async fn clients(
     client: &Tr064Client,
     networks: &[WifiNetwork],
 ) -> Result<Vec<WifiClient>, FrixError> {
-    let reti = reti_trovate(client, networks).await?;
-    let Some(prima) = reti.first() else {
+    let nets = found_networks(client, networks).await?;
+    let Some(first) = nets.first() else {
         return Ok(Vec::new());
     };
-    let mut risultato = Vec::new();
-    match voci_da_lista(client, &prima.service).await {
-        Ok(voci) => {
-            for voce in &voci {
-                if let Some(rete) = rete_della_voce(&reti, voce)? {
-                    risultato.push(wifi_client(rete, voce)?);
+    let mut result = Vec::new();
+    match entries_from_list(client, &first.service).await {
+        Ok(entries) => {
+            for entry in &entries {
+                if let Some(net) = network_of_entry(&nets, entry)? {
+                    result.push(wifi_client(net, entry)?);
                 }
             }
-            risultato.sort_by_key(|c| c.network);
+            result.sort_by_key(|c| c.network);
         }
-        Err(errore) => {
-            for rete in &reti {
-                let voci = voci_per_indice(client, &rete.service)
+        Err(error) => {
+            for net in &nets {
+                let entries = entries_by_index(client, &net.service)
                     .await
-                    .map_err(|_| errore.clone())?;
-                for voce in &voci {
-                    risultato.push(wifi_client(rete, voce)?);
+                    .map_err(|_| error.clone())?;
+                for entry in &entries {
+                    result.push(wifi_client(net, entry)?);
                 }
             }
         }
     }
-    Ok(risultato)
+    Ok(result)
 }
 
-/// La Wi-Fi Network richiesta di una voce della lista: Ospiti se `AssociatedDeviceGuest`
-/// è 1, altrimenti la principale della Band di `AssociatedDeviceChannel`. `None` se la
-/// Wi-Fi Network non è fra quelle richieste o il canale non dice la Band.
-fn rete_della_voce<'a>(
-    reti: &'a [ReteTrovata],
-    voce: &BTreeMap<String, String>,
-) -> Result<Option<&'a ReteTrovata>, FrixError> {
-    let campo = |nome: &str| {
-        voce.get(nome)
+/// The requested Wi-Fi Network of a list entry: guest if `AssociatedDeviceGuest`
+/// is 1, otherwise the main one for the Band of `AssociatedDeviceChannel`. `None` if the
+/// Wi-Fi Network is not among those requested or the channel does not tell the Band.
+fn network_of_entry<'a>(
+    nets: &'a [FoundNetwork],
+    entry: &BTreeMap<String, String>,
+) -> Result<Option<&'a FoundNetwork>, FrixError> {
+    let field = |name: &str| {
+        entry
+            .get(name)
             .map(|t| t.trim())
-            .ok_or_else(|| FrixError::Parse(format!("client Wi-Fi senza {nome}")))
+            .ok_or_else(|| FrixError::Parse(format!("Wi-Fi client without {name}")))
     };
-    let network = if campo("AssociatedDeviceGuest")? == "1" {
+    let network = if field("AssociatedDeviceGuest")? == "1" {
         WifiNetwork::Guest
     } else {
-        let canale = campo("AssociatedDeviceChannel")?.parse().map_err(|_| {
-            FrixError::Parse("valore non valido per AssociatedDeviceChannel".into())
-        })?;
-        match Band::from_channel(canale) {
+        let channel = field("AssociatedDeviceChannel")?
+            .parse()
+            .map_err(|_| FrixError::Parse("invalid value for AssociatedDeviceChannel".into()))?;
+        match Band::from_channel(channel) {
             Band::Ghz2_4 => WifiNetwork::Main2g,
             Band::Ghz5 => WifiNetwork::Main5g,
             _ => return Ok(None),
         }
     };
-    Ok(reti.iter().find(|r| r.network == network))
+    Ok(nets.iter().find(|n| n.network == network))
 }
 
-/// I campi di un client, con i nomi delle voci della lista (gli argomenti di
-/// `GetGenericAssociatedDeviceInfo` senza `New`).
-const CAMPI_CLIENT: [&str; 6] = [
+/// The fields of a client, with the list entry names (the
+/// `GetGenericAssociatedDeviceInfo` arguments without `New`).
+const CLIENT_FIELDS: [&str; 6] = [
     "AssociatedDeviceMACAddress",
     "AssociatedDeviceIPAddress",
     "AssociatedDeviceAuthState",
@@ -305,121 +306,126 @@ const CAMPI_CLIENT: [&str; 6] = [
     "X_AVM-DE_ChannelWidth",
 ];
 
-async fn voci_da_lista(
+async fn entries_from_list(
     client: &Tr064Client,
     service: &str,
 ) -> Result<Vec<BTreeMap<String, String>>, FrixError> {
     let r = client
         .call(service, "X_AVM-DE_GetWLANDeviceListPath", &[])
         .await?;
-    let documento = list_path::download(client, r.text("NewX_AVM-DE_WLANDeviceListPath")?).await?;
-    xml_list_items(&documento, "Item")
+    let document = list_path::download(client, r.text("NewX_AVM-DE_WLANDeviceListPath")?).await?;
+    xml_list_items(&document, "Item")
 }
 
-async fn voci_per_indice(
+async fn entries_by_index(
     client: &Tr064Client,
     service: &str,
 ) -> Result<Vec<BTreeMap<String, String>>, FrixError> {
-    let mut elenco = Vec::new();
-    for indice in 0..totale_associazioni(client, service).await? {
+    let mut entries = Vec::new();
+    for index in 0..total_associations(client, service).await? {
         let r = client
             .call(
                 service,
                 "GetGenericAssociatedDeviceInfo",
-                &[("NewAssociatedDeviceIndex", &indice.to_string())],
+                &[("NewAssociatedDeviceIndex", &index.to_string())],
             )
             .await?;
-        let mut voce = BTreeMap::new();
-        for campo in CAMPI_CLIENT {
-            voce.insert(campo.to_owned(), r.text(&format!("New{campo}"))?.to_owned());
+        let mut entry = BTreeMap::new();
+        for field in CLIENT_FIELDS {
+            entry.insert(field.to_owned(), r.text(&format!("New{field}"))?.to_owned());
         }
-        elenco.push(voce);
+        entries.push(entry);
     }
-    Ok(elenco)
+    Ok(entries)
 }
 
 fn wifi_client(
-    rete: &ReteTrovata,
-    voce: &BTreeMap<String, String>,
+    net: &FoundNetwork,
+    entry: &BTreeMap<String, String>,
 ) -> Result<WifiClient, FrixError> {
-    let testo = |nome: &str| {
-        voce.get(nome)
+    let text = |name: &str| {
+        entry
+            .get(name)
             .map(|t| t.trim())
-            .ok_or_else(|| FrixError::Parse(format!("client Wi-Fi senza {nome}")))
+            .ok_or_else(|| FrixError::Parse(format!("Wi-Fi client without {name}")))
     };
-    let numero = |nome: &str| -> Result<u16, FrixError> {
-        testo(nome)?
+    let number = |name: &str| -> Result<u16, FrixError> {
+        text(name)?
             .parse()
-            .map_err(|_| FrixError::Parse(format!("valore non valido per {nome}")))
+            .map_err(|_| FrixError::Parse(format!("invalid value for {name}")))
     };
     Ok(WifiClient {
-        network: rete.network,
-        band: rete.band,
-        mac: testo("AssociatedDeviceMACAddress")?
+        network: net.network,
+        band: net.band,
+        mac: text("AssociatedDeviceMACAddress")?
             .parse()
-            .map_err(|_| FrixError::Parse("MAC non valido di un client Wi-Fi".into()))?,
-        ip: testo("AssociatedDeviceIPAddress")?.to_owned(),
-        authenticated: testo("AssociatedDeviceAuthState")? == "1",
-        speed_mbps: numero("X_AVM-DE_Speed")?,
-        signal_strength: testo("X_AVM-DE_SignalStrength")?.parse().map_err(|_| {
-            FrixError::Parse("valore non valido per X_AVM-DE_SignalStrength".into())
-        })?,
-        channel_width_mhz: numero("X_AVM-DE_ChannelWidth")?,
+            .map_err(|_| FrixError::Parse("invalid MAC of a Wi-Fi client".into()))?,
+        ip: text("AssociatedDeviceIPAddress")?.to_owned(),
+        authenticated: text("AssociatedDeviceAuthState")? == "1",
+        speed_mbps: number("X_AVM-DE_Speed")?,
+        signal_strength: text("X_AVM-DE_SignalStrength")?
+            .parse()
+            .map_err(|_| FrixError::Parse("invalid value for X_AVM-DE_SignalStrength".into()))?,
+        channel_width_mhz: number("X_AVM-DE_ChannelWidth")?,
     })
 }
 
-/// La Band di un'istanza: `X_AVM-DE_FrequencyBand` di `X_AVM-DE_GetWLANExtInfo`
-/// (`da_ext_info`), poi quello di `GetChannelInfo`, poi il canale. Il 7590 con
-/// FRITZ!OS 8.25 risponde `unknown` in entrambi i campi sull'istanza Ospiti.
-async fn banda(client: &Tr064Client, service: &str, da_ext_info: &str) -> Result<Band, FrixError> {
-    let band = Band::from_router(da_ext_info);
+/// The Band of an instance: `X_AVM-DE_FrequencyBand` from `X_AVM-DE_GetWLANExtInfo`
+/// (`from_ext_info`), then the one from `GetChannelInfo`, then the channel. The 7590 with
+/// FRITZ!OS 8.25 answers `unknown` in both fields on the guest instance.
+async fn instance_band(
+    client: &Tr064Client,
+    service: &str,
+    from_ext_info: &str,
+) -> Result<Band, FrixError> {
+    let band = Band::from_router(from_ext_info);
     if band != Band::Unknown {
         return Ok(band);
     }
-    let canale = client.call(service, "GetChannelInfo", &[]).await?;
-    let band = canale
+    let channel_info = client.call(service, "GetChannelInfo", &[]).await?;
+    let band = channel_info
         .text("NewX_AVM-DE_FrequencyBand")
         .map_or(Band::Unknown, Band::from_router);
     if band != Band::Unknown {
         return Ok(band);
     }
-    Ok(Band::from_channel(canale.parse("NewChannel")?))
+    Ok(Band::from_channel(channel_info.parse("NewChannel")?))
 }
 
-async fn totale_associazioni(client: &Tr064Client, service: &str) -> Result<u16, FrixError> {
+async fn total_associations(client: &Tr064Client, service: &str) -> Result<u16, FrixError> {
     client
         .call(service, "GetTotalAssociations", &[])
         .await?
         .parse("NewTotalAssociations")
 }
 
-/// Le Wi-Fi Network richieste presenti nel router, nell'ordine di [`WifiNetwork::ALL`].
+/// The requested Wi-Fi Networks present on the router, in [`WifiNetwork::ALL`] order.
 ///
-/// Ogni istanza `WLANConfiguration` della discovery dichiara con `X_AVM-DE_GetWLANExtInfo`
-/// il tipo di AP (`normal`, `guest`) e la Band: Ospiti è l'AP `guest`, le principali
-/// sono gli AP `normal` a 2,4 e 5 GHz. Un'istanza che non rientra in nessuno dei tre
-/// casi si ignora; due istanze per la stessa Wi-Fi Network sono un errore. Una Wi-Fi
-/// Network chiesta esplicitamente e assente dal router è un errore di validazione.
-async fn reti_trovate(
+/// Each discovered `WLANConfiguration` instance declares via `X_AVM-DE_GetWLANExtInfo`
+/// the AP type (`normal`, `guest`) and the Band: guest is the `guest` AP, the main ones
+/// are the `normal` APs at 2.4 and 5 GHz. An instance that fits none of the three
+/// cases is ignored; two instances for the same Wi-Fi Network are an error. A Wi-Fi
+/// Network requested explicitly and missing from the router is a validation error.
+async fn found_networks(
     client: &Tr064Client,
     networks: &[WifiNetwork],
-) -> Result<Vec<ReteTrovata>, FrixError> {
-    let mut trovate: Vec<ReteTrovata> = Vec::new();
+) -> Result<Vec<FoundNetwork>, FrixError> {
+    let mut found: Vec<FoundNetwork> = Vec::new();
     for service in client.instances(SERVICE) {
         let r = client
             .call(&service, "X_AVM-DE_GetWLANExtInfo", &[])
             .await?;
-        let band = banda(client, &service, r.text("NewX_AVM-DE_FrequencyBand")?).await?;
+        let band = instance_band(client, &service, r.text("NewX_AVM-DE_FrequencyBand")?).await?;
         let network = match (r.text("NewX_AVM-DE_APType")?.trim(), band) {
             ("guest", _) => WifiNetwork::Guest,
             ("normal", Band::Ghz2_4) => WifiNetwork::Main2g,
             ("normal", Band::Ghz5) => WifiNetwork::Main5g,
             _ => continue,
         };
-        if let Some(doppia) = trovate.iter().find(|i| i.network == network) {
+        if let Some(duplicate) = found.iter().find(|i| i.network == network) {
             return Err(FrixError::Parse(format!(
-                "{} e {service} dichiarano entrambe la Wi-Fi Network {network}",
-                doppia.service
+                "{} and {service} both declare the Wi-Fi Network {network}",
+                duplicate.service
             )));
         }
         let guest = if network == WifiNetwork::Guest {
@@ -433,7 +439,7 @@ async fn reti_trovate(
         } else {
             None
         };
-        trovate.push(ReteTrovata {
+        found.push(FoundNetwork {
             network,
             service,
             band,
@@ -441,14 +447,14 @@ async fn reti_trovate(
         });
     }
     if networks.len() == 1
-        && let Some(rete) = networks.first()
-        && !trovate.iter().any(|i| i.network == *rete)
+        && let Some(net) = networks.first()
+        && !found.iter().any(|i| i.network == *net)
     {
         return Err(FrixError::Validation(format!(
-            "il router non ha un'istanza WLANConfiguration per la Wi-Fi Network {rete}"
+            "the router has no WLANConfiguration instance for the Wi-Fi Network {net}"
         )));
     }
-    trovate.retain(|i| networks.contains(&i.network));
-    trovate.sort_by_key(|i| i.network);
-    Ok(trovate)
+    found.retain(|i| networks.contains(&i.network));
+    found.sort_by_key(|i| i.network);
+    Ok(found)
 }

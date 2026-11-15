@@ -1,6 +1,6 @@
 [package]
 name = "frix-mcp"
-description = "Server MCP (stdio) di FrixMCP: tool di sola lettura sul FRITZ!Box"
+description = "FrixMCP MCP server (stdio): read-only tools for the FRITZ!Box"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -12,23 +12,23 @@ publish = false
 workspace = true
 
 [dependencies]
-# perché: client TR-064 e Policy; frix-mcp non conosce frix-web (docs/PROJECT.md §6.1).
+# why: TR-064 client and Policy; frix-mcp does not know about frix-web (docs/PROJECT.md §6.1).
 frix-core.workspace = true
-# perché: server MCP su stdio con le macro dei tool.
+# why: MCP server on stdio with the tool macros.
 rmcp.workspace = true
-# perché: runtime async del server MCP.
+# why: async runtime of the MCP server.
 tokio.workspace = true
-# perché: le risposte dei tool sono struct serializzate in JSON.
+# why: tool responses are structs serialized to JSON.
 serde.workspace = true
-# perché: JSON delle risposte dei tool.
+# why: JSON of the tool responses.
 serde_json.workspace = true
-# perché: la password letta dal Keychain resta un `SecretString` fino al trasporto.
+# why: the password read from the keyring stays a `SecretString` until the transport.
 secrecy.workspace = true
 
 [dev-dependencies]
-# perché: client MCP nello stesso processo per i test (harness su trasporto in memoria).
+# why: in-process MCP client for the tests (harness over an in-memory transport).
 rmcp = { workspace = true, features = ["client"] }
-# perché: router finto con TLS nei test dell'avvio sul trasporto reale.
+# why: fake router with TLS in the startup tests over the real transport.
 rustls.workspace = true
-# perché: verifica indipendente dell'header Digest nel router finto.
+# why: independent check of the Digest header in the fake router.
 md-5.workspace = true

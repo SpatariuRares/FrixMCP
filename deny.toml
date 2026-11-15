@@ -10,22 +10,22 @@ ignore = []
 version = 2
 allow = ["MIT", "Apache-2.0", "Apache-2.0 WITH LLVM-exception", "BSD-2-Clause", "BSD-3-Clause", "ISC", "Unicode-3.0", "Zlib", "MPL-2.0", "CDLA-Permissive-2.0"]
 confidence-threshold = 0.9
-# la lista è pensata per le dipendenze future: non segnalare le licenze non ancora incontrate
+# the list is meant for future dependencies: do not flag licenses not yet encountered
 unused-allowed-license = "allow"
 
 [licenses.private]
-# i crate del workspace hanno `publish = false`: la loro licenza la controlla il manifest
+# the workspace crates have `publish = false`: their license is checked by the manifest
 ignore = true
 
 [bans]
 multiple-versions = "warn"
 wildcards = "deny"
-# le dipendenze `path` interne al workspace non sono wildcard
+# `path` dependencies inside the workspace are not wildcards
 allow-wildcard-paths = true
 deny = [
-  { crate = "openssl", reason = "si usa rustls" },
-  { crate = "openssl-sys", reason = "si usa rustls" },
-  { crate = "native-tls", reason = "si usa rustls" },
+  { crate = "openssl", reason = "rustls is used instead" },
+  { crate = "openssl-sys", reason = "rustls is used instead" },
+  { crate = "native-tls", reason = "rustls is used instead" },
 ]
 
 [sources]

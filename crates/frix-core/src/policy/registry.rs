@@ -1,29 +1,29 @@
-//! Registro statico (servizio, azione) → Classification, compilato a mano dalla
-//! docs/PROJECT.md §4.2 sui 35 SCPD del 7590 (FRITZ!OS 8.25). Il servizio è il tipo
-//! senza istanza (`WLANConfiguration`, non `:1`): le tre istanze WLAN condividono lo SCPD.
+//! Static registry (service, action) → Classification, compiled by hand from
+//! docs/PROJECT.md §4.2 over the 35 SCPDs of the 7590 (FRITZ!OS 8.25). The service is the
+//! type without instance (`WLANConfiguration`, not `:1`): the three WLAN instances share the SCPD.
 //!
-//! Regole per le azioni che la §4.2 non classifica esplicitamente (ogni caso è
-//! commentato sulla riga):
-//! - una lettura non citata, che non restituisce segreti, è `R`;
-//! - una scrittura senza Level nella §4.2 ("fuori v1") è `X`: riclassificarla è una
-//!   decisione esplicita di una spec successiva;
-//! - fra due Level possibili si sceglie il più restrittivo.
+//! Rules for actions that §4.2 does not classify explicitly (each case is commented
+//! on its row):
+//! - an unlisted read that returns no secrets is `R`;
+//! - a write without a Level in §4.2 ("outside v1") is `X`: reclassifying it is an
+//!   explicit decision of a later spec;
+//! - between two possible Levels the more restrictive one wins.
 //!
-//! Un'azione nuova in un futuro FRITZ!OS non ha riga: la Policy la nega e il test
-//! `ogni_azione_degli_scpd_del_7590_ha_una_classification` fallisce.
+//! A new action in a future FRITZ!OS has no row: the Policy denies it and the test
+//! `every_action_of_the_7590_scpds_has_a_classification` fails.
 
 use super::{Classification, Level, Right};
 
-/// Riga del registro: servizio, azione, Classification.
+/// Registry row: service, action, Classification.
 pub(super) type Entry = (&'static str, &'static str, Classification);
 
-/// `read`: sempre attivo.
+/// `read`: always enabled.
 const R: Classification = Classification::Exposed(Level::Read);
-/// `write`: `--allow-writes` e audit (spec successive).
+/// `write`: `--allow-writes` and audit (later specs).
 const W: Classification = Classification::Exposed(Level::Write);
-/// `dangerous`: `--allow-dangerous` e Confirmation (spec successive).
+/// `dangerous`: `--allow-dangerous` and Confirmation (later specs).
 const D: Classification = Classification::Exposed(Level::Dangerous);
-/// Forbidden: non eseguibile in nessun caso.
+/// Forbidden: cannot be executed in any case.
 const X: Classification = Classification::Forbidden;
 
 pub(super) const REGISTRY: &[Entry] = &[
@@ -55,7 +55,7 @@ pub(super) const REGISTRY: &[Entry] = &[
     ("Hosts", "X_AVM-DE_SetFriendlyName", W),
     ("Hosts", "X_AVM-DE_HostsCheckUpdate", D),
     ("Hosts", "X_AVM-DE_HostDoUpdate", D),
-    // §4.2.3 WLANConfiguration (istanze 1, 2, 3)
+    // §4.2.3 WLANConfiguration (instances 1, 2, 3)
     ("WLANConfiguration", "GetInfo", R),
     ("WLANConfiguration", "GetSSID", R),
     ("WLANConfiguration", "GetBSSID", R),
@@ -76,19 +76,19 @@ pub(super) const REGISTRY: &[Entry] = &[
     ("WLANConfiguration", "X_AVM-DE_GetWPSInfo", R),
     ("WLANConfiguration", "X_AVM-DE_GetNightControl", R),
     ("WLANConfiguration", "X_AVM-DE_GetIPTVOptimized", R),
-    // §4.2.3 la elenca come R, ma lo SCPD del 7590 restituisce `NewKeyPassphrase`:
-    // espone una chiave Wi-Fi come `GetSecurityKeys`, quindi stesso Level.
+    // §4.2.3 lists it as R, but the 7590 SCPD returns `NewKeyPassphrase`:
+    // it exposes a Wi-Fi key like `GetSecurityKeys`, hence the same Level.
     ("WLANConfiguration", "X_AVM-DE_GetWLANHybridMode", D),
     ("WLANConfiguration", "GetBeaconType", R),
     ("WLANConfiguration", "GetBeaconAdvertisement", R),
     ("WLANConfiguration", "GetBasBeaconSecurityProperties", R),
-    // espone la password Wi-Fi
+    // exposes the Wi-Fi password
     ("WLANConfiguration", "GetSecurityKeys", D),
-    // §4.2.3: W sull'istanza ospiti, D sulle principali. La corrispondenza istanza →
-    // Wi-Fi Network non è ancora verificata (§4.1), quindi D su tutte le istanze.
+    // §4.2.3: W on the guest instance, D on the main ones. The instance → Wi-Fi Network
+    // mapping is not verified yet (§4.1), hence D on all instances.
     ("WLANConfiguration", "SetEnable", D),
     ("WLANConfiguration", "X_AVM-DE_SetWLANGlobalEnable", D),
-    // §4.2.3 "W/D" in ordine: SetWPSEnable W, SetWPSConfig D
+    // §4.2.3 "W/D" in order: SetWPSEnable W, SetWPSConfig D
     ("WLANConfiguration", "X_AVM-DE_SetWPSEnable", W),
     ("WLANConfiguration", "X_AVM-DE_SetWPSConfig", D),
     ("WLANConfiguration", "SetSSID", D),
@@ -97,12 +97,12 @@ pub(super) const REGISTRY: &[Entry] = &[
     ("WLANConfiguration", "SetBeaconType", D),
     ("WLANConfiguration", "SetBeaconAdvertisement", D),
     ("WLANConfiguration", "SetBasBeaconSecurityProperties", D),
-    // D su tutte le istanze, ospiti compresa (diritto A sulla rete ospiti)
+    // D on all instances, guest included (right A on the guest network)
     ("WLANConfiguration", "SetSecurityKeys", D),
     ("WLANConfiguration", "X_AVM-DE_SetStickSurfEnable", D),
     ("WLANConfiguration", "X_AVM-DE_SetIPTVOptimized", D),
     ("WLANConfiguration", "X_AVM-DE_SetWLANHybridMode", D),
-    // WEP, "removed" da AVM
+    // WEP, "removed" by AVM
     ("WLANConfiguration", "GetDefaultWEPKeyIndex", X),
     ("WLANConfiguration", "SetDefaultWEPKeyIndex", X),
     // §4.2.4 WANCommonInterfaceConfig
@@ -131,7 +131,7 @@ pub(super) const REGISTRY: &[Entry] = &[
     ("WANPPPConnection", "GetGenericPortMappingEntry", R),
     ("WANPPPConnection", "GetSpecificPortMappingEntry", R),
     ("WANPPPConnection", "X_AVM-DE_GetAutoDisconnectTimeSpan", R),
-    // non citata: lettura, lo UserName PPP è già in GetInfo (da non loggare)
+    // unlisted: read, the PPP UserName is already in GetInfo (not to be logged)
     ("WANPPPConnection", "GetUserName", R),
     ("WANPPPConnection", "ForceTermination", D),
     ("WANPPPConnection", "RequestConnection", D),
@@ -190,7 +190,7 @@ pub(super) const REGISTRY: &[Entry] = &[
     ("X_AVM-DE_Speedtest", "GetStatistics", R),
     ("X_AVM-DE_Speedtest", "SetConfig", W),
     ("X_AVM-DE_Speedtest", "ResetStatistics", W),
-    // §4.2.11 X_AVM-DE_OnTel (le letture non citate per nome sono letture: R)
+    // §4.2.11 X_AVM-DE_OnTel (reads not listed by name are reads: R)
     ("X_AVM-DE_OnTel", "GetInfo", R),
     ("X_AVM-DE_OnTel", "GetInfoByIndex", R),
     ("X_AVM-DE_OnTel", "GetNumberOfEntries", R),
@@ -232,10 +232,10 @@ pub(super) const REGISTRY: &[Entry] = &[
     // §4.2.13 X_AVM-DE_Auth
     ("X_AVM-DE_Auth", "GetInfo", R),
     ("X_AVM-DE_Auth", "GetState", R),
-    // senza Level nella §4.2 (avvia il secondo fattore, fase 4): X finché non si decide
+    // no Level in §4.2 (starts the second factor, phase 4): X until decided
     ("X_AVM-DE_Auth", "SetConfig", X),
     // §4.2.14 DeviceConfig
-    // interno: SID per scaricare liste e log via HTTP, nessun tool lo espone
+    // internal: SID to download lists and logs over HTTP, no tool exposes it
     ("DeviceConfig", "X_AVM-DE_CreateUrlSID", R),
     ("DeviceConfig", "ConfigurationStarted", W),
     ("DeviceConfig", "ConfigurationFinished", W),
@@ -282,7 +282,7 @@ pub(super) const REGISTRY: &[Entry] = &[
     ("X_AVM-DE_USPController", "SetUSPMyFRITZEnable", X),
     // §4.2.15 ManagementServer (TR-069)
     ("ManagementServer", "GetInfo", R),
-    // non citata: lettura
+    // unlisted: read
     (
         "ManagementServer",
         "X_AVM-DE_GetTR069FirmwareDownloadEnabled",
@@ -306,7 +306,7 @@ pub(super) const REGISTRY: &[Entry] = &[
     ("LANHostConfigManagement", "GetDNSServers", R),
     ("LANHostConfigManagement", "GetIPRoutersList", R),
     ("LANHostConfigManagement", "GetSubnetMask", R),
-    // non citata: lettura
+    // unlisted: read
     (
         "LANHostConfigManagement",
         "GetIPInterfaceNumberOfEntries",
@@ -331,7 +331,7 @@ pub(super) const REGISTRY: &[Entry] = &[
     ("Layer3Forwarding", "GetDefaultConnectionService", R),
     ("Layer3Forwarding", "GetForwardNumberOfEntries", R),
     ("Layer3Forwarding", "GetGenericForwardingEntry", R),
-    // non citata: lettura
+    // unlisted: read
     ("Layer3Forwarding", "GetSpecificForwardingEntry", R),
     ("Layer3Forwarding", "AddForwardingEntry", X),
     ("Layer3Forwarding", "DeleteForwardingEntry", X),
@@ -349,7 +349,7 @@ pub(super) const REGISTRY: &[Entry] = &[
     ("UserInterface", "X_AVM-DE_DoManualUpdate", X),
     ("UserInterface", "X_AVM-DE_SetConfig", D),
     ("UserInterface", "X_AVM-DE_SetInternationalConfig", X),
-    // §4.2.16 "interno": prepara l'aggiornamento manuale (X) e frix-core non lo usa
+    // §4.2.16 "internal": prepares the manual update (X) and frix-core does not use it
     ("UserInterface", "X_AVM-DE_DoPrepareCGI", X),
     // §4.2.16 X_AVM-DE_Storage
     ("X_AVM-DE_Storage", "GetInfo", R),
@@ -365,7 +365,7 @@ pub(super) const REGISTRY: &[Entry] = &[
     // §4.2.16 X_AVM-DE_WebDAVClient
     ("X_AVM-DE_WebDAVClient", "GetInfo", R),
     ("X_AVM-DE_WebDAVClient", "SetConfig", X),
-    // §4.2.16 X_AVM-DE_Filelinks: scritture "fuori v1" senza Level (pubblicano file) → X
+    // §4.2.16 X_AVM-DE_Filelinks: "outside v1" writes without Level (they publish files) → X
     ("X_AVM-DE_Filelinks", "GetNumberOfFilelinkEntries", R),
     ("X_AVM-DE_Filelinks", "GetGenericFilelinkEntry", R),
     ("X_AVM-DE_Filelinks", "GetSpecificFilelinkEntry", R),
@@ -377,9 +377,9 @@ pub(super) const REGISTRY: &[Entry] = &[
     ("X_AVM-DE_Homeplug", "GetNumberOfDeviceEntries", R),
     ("X_AVM-DE_Homeplug", "GetGenericDeviceEntry", R),
     ("X_AVM-DE_Homeplug", "GetSpecificDeviceEntry", R),
-    // senza Level nella §4.2: aggiornamento firmware come DectDoUpdate e HostDoUpdate
+    // no Level in §4.2: firmware update like DectDoUpdate and HostDoUpdate
     ("X_AVM-DE_Homeplug", "DeviceDoUpdate", D),
-    // §4.2.16 X_AVM-DE_WANMobileConnection: il 7590 non ha modem LTE, "ignorare (X)"
+    // §4.2.16 X_AVM-DE_WANMobileConnection: the 7590 has no LTE modem, "ignore (X)"
     ("X_AVM-DE_WANMobileConnection", "GetInfo", X),
     ("X_AVM-DE_WANMobileConnection", "GetInfoEx", X),
     ("X_AVM-DE_WANMobileConnection", "GetAccessTechnology", X),
@@ -407,7 +407,7 @@ pub(super) const REGISTRY: &[Entry] = &[
         "SetEnabledBandCapabilities",
         X,
     ),
-    // §4.2.16 X_AVM-DE_AppSetup: GetConfig e GetAppRemoteInfo R, "il resto X"
+    // §4.2.16 X_AVM-DE_AppSetup: GetConfig and GetAppRemoteInfo R, "the rest X"
     ("X_AVM-DE_AppSetup", "GetConfig", R),
     ("X_AVM-DE_AppSetup", "GetAppRemoteInfo", R),
     ("X_AVM-DE_AppSetup", "GetInfo", X),
@@ -419,8 +419,8 @@ pub(super) const REGISTRY: &[Entry] = &[
     ("X_AVM-DE_AppSetup", "SetAppMessageFilter", X),
     ("X_AVM-DE_AppSetup", "SetAppMessageReceiver", X),
     ("X_AVM-DE_AppSetup", "ResetEvent", X),
-    // §4.2.16 X_VoIP: fuori v1. Letture R tranne X_AVM-DE_GetVoIPAccount (password SIP);
-    // scritture senza Level (account, client, chiamate) → X
+    // §4.2.16 X_VoIP: outside v1. Reads R except X_AVM-DE_GetVoIPAccount (SIP password);
+    // writes without Level (accounts, clients, calls) → X
     ("X_VoIP", "GetInfo", R),
     ("X_VoIP", "GetInfoEx", R),
     ("X_VoIP", "GetMaxVoIPNumbers", R),
@@ -465,8 +465,8 @@ pub(super) const REGISTRY: &[Entry] = &[
     ("X_VoIP", "X_AVM-DE_DialHangup", X),
     ("X_VoIP", "X_AVM-DE_SetDelayedCallNotification", X),
     ("X_VoIP", "X_AVM-DE_SetAlarmClockEnable", X),
-    // WANDSLLinkConfig: non è nella §4.2. Letture R; le scritture cambiano il link
-    // WAN come X_AVM-DE_SetWANAccessType (X) → X
+    // WANDSLLinkConfig: not in §4.2. Reads R; writes change the WAN link
+    // like X_AVM-DE_SetWANAccessType (X) → X
     ("WANDSLLinkConfig", "GetInfo", R),
     ("WANDSLLinkConfig", "GetAutoConfig", R),
     ("WANDSLLinkConfig", "GetDSLLinkInfo", R),
@@ -477,14 +477,14 @@ pub(super) const REGISTRY: &[Entry] = &[
     ("WANDSLLinkConfig", "SetDSLLinkType", X),
     ("WANDSLLinkConfig", "SetDestinationAddress", X),
     ("WANDSLLinkConfig", "SetATMEncapsulation", X),
-    // WANEthernetLinkConfig: non è nella §4.2, sola lettura
+    // WANEthernetLinkConfig: not in §4.2, read-only
     ("WANEthernetLinkConfig", "GetEthernetLinkStatus", R),
 ];
 
-/// Riga della tabella dei diritti: servizio, azione, diritti che bastano (uno qualunque).
+/// Rights table row: service, action, rights that suffice (any one of them).
 pub(super) type RightsEntry = (&'static str, &'static str, &'static [Right]);
 
-const NESSUNO: &[Right] = &[];
+const NONE: &[Right] = &[];
 const C: &[Right] = &[Right::Configuration];
 const A: &[Right] = &[Right::App];
 const C_A: &[Right] = &[Right::Configuration, Right::App];
@@ -498,26 +498,26 @@ const C_A_P_N_H: &[Right] = &[
     Right::HomeAuto,
 ];
 
-/// Colonna "Diritto" della docs/PROJECT.md §4.2 (dal documento AVM *First Steps* v60,
-/// cap. 6.1) per le azioni Read: è l'unica fonte del diritto che un fault 606 nomina.
-/// Un'azione assente qui ha un diritto non documentato: nessuno lo inventa.
+/// Rights column of docs/PROJECT.md §4.2 (from the AVM *First Steps* document v60,
+/// ch. 6.1) for Read actions: the only source of the right a fault 606 names.
+/// An action missing here has an undocumented right: nobody makes it up.
 pub(super) const RIGHTS: &[RightsEntry] = &[
     // §4.2.1 DeviceInfo
     ("DeviceInfo", "GetInfo", C),
     ("DeviceInfo", "GetDeviceLog", C),
     ("DeviceInfo", "X_AVM-DE_GetDeviceLogPath", C),
-    ("DeviceInfo", "GetSecurityPort", NESSUNO),
+    ("DeviceInfo", "GetSecurityPort", NONE),
     // §4.2.2 Hosts
-    ("Hosts", "GetHostNumberOfEntries", NESSUNO),
-    ("Hosts", "GetGenericHostEntry", NESSUNO),
-    ("Hosts", "GetSpecificHostEntry", NESSUNO),
+    ("Hosts", "GetHostNumberOfEntries", NONE),
+    ("Hosts", "GetGenericHostEntry", NONE),
+    ("Hosts", "GetSpecificHostEntry", NONE),
     ("Hosts", "X_AVM-DE_GetSpecificHostEntryByIP", C_A_P),
     ("Hosts", "X_AVM-DE_GetHostListPath", C_A_P),
     ("Hosts", "X_AVM-DE_GetMeshListPath", C_A_P),
-    ("Hosts", "X_AVM-DE_GetChangeCounter", NESSUNO),
-    ("Hosts", "X_AVM-DE_GetInfo", NESSUNO),
-    ("Hosts", "X_AVM-DE_GetAutoWakeOnLANByMACAddress", NESSUNO),
-    ("Hosts", "X_AVM-DE_GetFriendlyName", NESSUNO),
+    ("Hosts", "X_AVM-DE_GetChangeCounter", NONE),
+    ("Hosts", "X_AVM-DE_GetInfo", NONE),
+    ("Hosts", "X_AVM-DE_GetAutoWakeOnLANByMACAddress", NONE),
+    ("Hosts", "X_AVM-DE_GetFriendlyName", NONE),
     // §4.2.3 WLANConfiguration
     ("WLANConfiguration", "GetInfo", C_A_P),
     ("WLANConfiguration", "GetSSID", A),
@@ -539,13 +539,9 @@ pub(super) const RIGHTS: &[RightsEntry] = &[
     ),
     ("WLANConfiguration", "X_AVM-DE_GetWLANDeviceListPath", C_A_P),
     ("WLANConfiguration", "X_AVM-DE_GetWLANExtInfo", C_A),
-    (
-        "WLANConfiguration",
-        "X_AVM-DE_GetWLANConnectionInfo",
-        NESSUNO,
-    ),
+    ("WLANConfiguration", "X_AVM-DE_GetWLANConnectionInfo", NONE),
     ("WLANConfiguration", "X_AVM-DE_GetWPSInfo", C_A),
-    ("WLANConfiguration", "X_AVM-DE_GetNightControl", NESSUNO),
+    ("WLANConfiguration", "X_AVM-DE_GetNightControl", NONE),
     ("WLANConfiguration", "X_AVM-DE_GetIPTVOptimized", C),
     // §4.2.4 WANCommonInterfaceConfig
     (
@@ -566,12 +562,8 @@ pub(super) const RIGHTS: &[RightsEntry] = &[
     // §4.2.5 WANDSLInterfaceConfig
     ("WANDSLInterfaceConfig", "GetInfo", C),
     ("WANDSLInterfaceConfig", "GetStatisticsTotal", C),
-    ("WANDSLInterfaceConfig", "X_AVM-DE_GetDSLInfo", NESSUNO),
-    (
-        "WANDSLInterfaceConfig",
-        "X_AVM-DE_GetDSLDiagnoseInfo",
-        NESSUNO,
-    ),
+    ("WANDSLInterfaceConfig", "X_AVM-DE_GetDSLInfo", NONE),
+    ("WANDSLInterfaceConfig", "X_AVM-DE_GetDSLDiagnoseInfo", NONE),
     // §4.2.6 WANPPPConnection / WANIPConnection
     ("WANPPPConnection", "GetInfo", C),
     ("WANPPPConnection", "GetStatusInfo", C),
@@ -605,6 +597,6 @@ pub(super) const RIGHTS: &[RightsEntry] = &[
     ("X_AVM-DE_Homeauto", "GetSpecificDeviceInfos", C_H),
     // §4.2.14 DeviceConfig
     ("DeviceConfig", "X_AVM-DE_CreateUrlSID", C_A_P_N_H),
-    // §4.3: LANHostConfigManagement:GetInfo richiede C.
+    // §4.3: LANHostConfigManagement:GetInfo requires C.
     ("LANHostConfigManagement", "GetInfo", C),
 ];

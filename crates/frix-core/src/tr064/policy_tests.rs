@@ -1,8 +1,8 @@
-//! Policy sui dati reali del 7590: ogni azione degli SCPD fixture ha una Classification
-//! e solo le azioni di Level Read raggiungono il transport (docs/PROJECT.md §4.2, §6.2).
+//! Policy on the real 7590 data: every action of the fixture SCPDs has a Classification
+//! and only Read-Level actions reach the transport (docs/PROJECT.md §4.2, §6.2).
 //!
-//! Stanno sotto `tr064` perché il seam MCP non può raggiungere un'azione non Read
-//! (nessun tool la chiama): qui si passa da [`Tr064Client::call`], che è `pub(crate)`.
+//! They live under `tr064` because the MCP seam cannot reach a non-Read action
+//! (no tool calls one): here we go through [`Tr064Client::call`], which is `pub(crate)`.
 #![allow(
     clippy::unwrap_used,
     clippy::expect_used,
@@ -25,93 +25,96 @@ async fn client_7590() -> (Tr064Client, RequestLog) {
     let transport = FixtureTransport::new()
         .with_descriptions_dir(&scpd)
         .expect("SCPD fixture");
-    let registro = transport.requests();
+    let log = transport.requests();
     let client = Tr064Client::discover(Arc::new(transport))
         .await
-        .expect("discovery sulle fixture");
-    (client, registro)
+        .expect("discovery on the fixtures");
+    (client, log)
 }
 
 #[tokio::test]
-async fn ogni_azione_degli_scpd_del_7590_ha_una_classification() {
+async fn every_action_of_the_7590_scpds_has_a_classification() {
     let (client, _) = client_7590().await;
 
-    let mut senza = Vec::new();
-    for servizio in &client.services {
-        let tipo = servizio
+    let mut missing = Vec::new();
+    for service in &client.services {
+        let kind = service
             .service_type
             .strip_prefix(SERVICE_URN_PREFIX)
-            .unwrap_or(&servizio.service_type);
-        for azione in servizio.actions.keys() {
-            if classification(tipo, azione).is_none() {
-                senza.push(format!("{tipo}#{azione}"));
+            .unwrap_or(&service.service_type);
+        for action in service.actions.keys() {
+            if classification(kind, action).is_none() {
+                missing.push(format!("{kind}#{action}"));
             }
         }
     }
 
     assert!(client.services.len() >= 35, "{}", client.services.len());
-    assert!(senza.is_empty(), "azioni senza Classification: {senza:#?}");
+    assert!(
+        missing.is_empty(),
+        "actions without Classification: {missing:#?}"
+    );
 }
 
 #[tokio::test]
-async fn ogni_riga_del_registro_e_un_azione_degli_scpd_e_compare_una_volta_sola() {
+async fn every_registry_row_is_an_scpd_action_and_appears_once() {
     let (client, _) = client_7590().await;
-    let esistenti: BTreeSet<(String, String)> = client
+    let existing: BTreeSet<(String, String)> = client
         .services
         .iter()
         .flat_map(|s| {
-            let tipo = s
+            let kind = s
                 .service_type
                 .strip_prefix(SERVICE_URN_PREFIX)
                 .and_then(|t| t.rsplit_once(':'))
                 .map_or(s.service_type.clone(), |(t, _)| t.to_owned());
-            s.actions.keys().map(move |a| (tipo.clone(), a.clone()))
+            s.actions.keys().map(move |a| (kind.clone(), a.clone()))
         })
         .collect();
 
-    let mut viste = BTreeSet::new();
-    let mut doppie = Vec::new();
-    let mut orfane = Vec::new();
-    for (servizio, azione) in registered_actions() {
-        let chiave = (servizio.to_owned(), azione.to_owned());
-        if !esistenti.contains(&chiave) {
-            orfane.push(format!("{servizio}#{azione}"));
+    let mut seen = BTreeSet::new();
+    let mut duplicates = Vec::new();
+    let mut orphans = Vec::new();
+    for (service, action) in registered_actions() {
+        let key = (service.to_owned(), action.to_owned());
+        if !existing.contains(&key) {
+            orphans.push(format!("{service}#{action}"));
         }
-        if !viste.insert(chiave) {
-            doppie.push(format!("{servizio}#{azione}"));
+        if !seen.insert(key) {
+            duplicates.push(format!("{service}#{action}"));
         }
     }
 
     assert!(
-        orfane.is_empty(),
-        "righe senza azione nello SCPD: {orfane:#?}"
+        orphans.is_empty(),
+        "rows without an action in the SCPD: {orphans:#?}"
     );
-    assert!(doppie.is_empty(), "righe duplicate: {doppie:#?}");
+    assert!(duplicates.is_empty(), "duplicate rows: {duplicates:#?}");
 }
 
 #[test]
-fn ogni_riga_dei_diritti_e_un_azione_read_del_registro_e_compare_una_volta_sola() {
-    let mut viste = BTreeSet::new();
-    for (servizio, azione) in actions_with_rights() {
+fn every_rights_row_is_a_read_action_of_the_registry_and_appears_once() {
+    let mut seen = BTreeSet::new();
+    for (service, action) in actions_with_rights() {
         assert_eq!(
-            classification(servizio, azione),
+            classification(service, action),
             Some(Classification::Exposed(Level::Read)),
-            "{servizio}#{azione}"
+            "{service}#{action}"
         );
         assert!(
-            viste.insert((servizio, azione)),
-            "doppia: {servizio}#{azione}"
+            seen.insert((service, action)),
+            "duplicate: {service}#{action}"
         );
     }
 }
 
 #[test]
-fn le_classification_corrispondono_alla_sezione_4_2() {
+fn classifications_match_section_4_2() {
     let r = Some(Classification::Exposed(Level::Read));
     let w = Some(Classification::Exposed(Level::Write));
     let d = Some(Classification::Exposed(Level::Dangerous));
     let x = Some(Classification::Forbidden);
-    let attese = [
+    let expected = [
         // §4.2.1
         ("DeviceInfo:1", "GetSecurityPort", r),
         ("DeviceInfo:1", "SetProvisioningCode", x),
@@ -119,7 +122,7 @@ fn le_classification_corrispondono_alla_sezione_4_2() {
         ("Hosts:1", "X_AVM-DE_GetMeshListPath", r),
         ("Hosts:1", "X_AVM-DE_SetHostNameByMACAddress", w),
         ("Hosts:1", "X_AVM-DE_HostDoUpdate", d),
-        // §4.2.3: la password Wi-Fi, anche della rete ospiti, è Dangerous
+        // §4.2.3: the Wi-Fi password, guest network included, is Dangerous
         ("WLANConfiguration:1", "GetSecurityKeys", d),
         ("WLANConfiguration:3", "GetSecurityKeys", d),
         ("WLANConfiguration:1", "SetSecurityKeys", d),
@@ -154,34 +157,30 @@ fn le_classification_corrispondono_alla_sezione_4_2() {
         ("UserInterface:1", "X_AVM-DE_DoManualUpdate", x),
         ("X_AVM-DE_Storage:1", "SetFTPServerWAN", x),
         ("X_VoIP:1", "X_AVM-DE_GetVoIPAccount", x),
-        // azione inesistente: nessuna Classification
+        // nonexistent action: no Classification
         ("DeviceInfo:1", "GetInfoV2", None),
     ];
 
-    for (servizio, azione, attesa) in attese {
-        assert_eq!(
-            classification(servizio, azione),
-            attesa,
-            "{servizio}#{azione}"
-        );
+    for (service, action, want) in expected {
+        assert_eq!(classification(service, action), want, "{service}#{action}");
     }
 }
 
-/// Chiama un'azione che esiste nello SCPD con argomenti validi e verifica che la
-/// Policy la neghi prima di qualunque richiesta SOAP.
-async fn negata_senza_traffico(service: &str, action: &str, args: &[(&str, &str)]) {
-    let (client, registro) = client_7590().await;
+/// Calls an action that exists in the SCPD with valid arguments and checks that the
+/// Policy denies it before any SOAP request.
+async fn denied_without_traffic(service: &str, action: &str, args: &[(&str, &str)]) {
+    let (client, log) = client_7590().await;
 
-    let esito = client.call(service, action, args).await;
+    let result = client.call(service, action, args).await;
 
-    let errore = esito.expect_err("la Policy deve negare l'azione");
-    assert_eq!(errore.kind(), "policy", "{service}#{action}: {errore}");
-    assert!(registro.soap().is_empty(), "{:?}", registro.soap());
+    let error = result.expect_err("the Policy must deny the action");
+    assert_eq!(error.kind(), "policy", "{service}#{action}: {error}");
+    assert!(log.soap().is_empty(), "{:?}", log.soap());
 }
 
 #[tokio::test]
-async fn azione_write_negata_senza_traffico_verso_il_transport() {
-    negata_senza_traffico(
+async fn write_action_denied_without_traffic_to_the_transport() {
+    denied_without_traffic(
         "Hosts:1",
         "X_AVM-DE_WakeOnLANByMACAddress",
         &[("NewMACAddress", "02:00:00:00:00:02")],
@@ -190,11 +189,11 @@ async fn azione_write_negata_senza_traffico_verso_il_transport() {
 }
 
 #[tokio::test]
-async fn azione_dangerous_negata_senza_traffico_verso_il_transport() {
-    negata_senza_traffico("DeviceConfig:1", "Reboot", &[]).await;
+async fn dangerous_action_denied_without_traffic_to_the_transport() {
+    denied_without_traffic("DeviceConfig:1", "Reboot", &[]).await;
 }
 
 #[tokio::test]
-async fn azione_forbidden_negata_senza_traffico_verso_il_transport() {
-    negata_senza_traffico("DeviceConfig:1", "FactoryReset", &[]).await;
+async fn forbidden_action_denied_without_traffic_to_the_transport() {
+    denied_without_traffic("DeviceConfig:1", "FactoryReset", &[]).await;
 }

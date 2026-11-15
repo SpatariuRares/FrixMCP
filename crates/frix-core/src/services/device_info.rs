@@ -5,7 +5,7 @@ use crate::tr064::Tr064Client;
 
 const SERVICE: &str = "DeviceInfo:1";
 
-/// Identità e stato del router, senza il log di sistema.
+/// Router identity and status, without the system log.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DeviceInfo {
     /// `NewManufacturerName`.
@@ -18,15 +18,15 @@ pub struct DeviceInfo {
     pub product_class: String,
     /// `NewSerialNumber`.
     pub serial_number: String,
-    /// `NewSoftwareVersion`: versione di FRITZ!OS.
+    /// `NewSoftwareVersion`: FRITZ!OS version.
     pub software_version: String,
     /// `NewHardwareVersion`.
     pub hardware_version: String,
-    /// `NewUpTime`, in secondi.
+    /// `NewUpTime`, in seconds.
     pub uptime_seconds: u64,
 }
 
-/// `GetInfo`. Il `NewDeviceLog` della risposta viene scartato: è grande e non fidato.
+/// `GetInfo`. The response's `NewDeviceLog` is discarded: it is large and untrusted.
 pub async fn info(client: &Tr064Client) -> Result<DeviceInfo, FrixError> {
     let r = client.call(SERVICE, "GetInfo", &[]).await?;
     Ok(DeviceInfo {
@@ -41,8 +41,8 @@ pub async fn info(client: &Tr064Client) -> Result<DeviceInfo, FrixError> {
     })
 }
 
-/// `GetSecurityPort`: la porta HTTPS del TR-064. Unica azione inviata in chiaro e
-/// senza credenziali (docs/PROJECT.md §5.1).
+/// `GetSecurityPort`: the TR-064 HTTPS port. The only action sent in plain text and
+/// without credentials (docs/PROJECT.md §5.1).
 pub async fn security_port(client: &Tr064Client) -> Result<u16, FrixError> {
     client
         .call_plain(SERVICE, "GetSecurityPort", &[])
@@ -50,15 +50,15 @@ pub async fn security_port(client: &Tr064Client) -> Result<u16, FrixError> {
         .parse("NewSecurityPort")
 }
 
-/// `GetDeviceLog`: le righe del log di sistema, dalla più recente, senza righe vuote.
+/// `GetDeviceLog`: the system log lines, newest first, without empty lines.
 ///
-/// Il contenuto è testo libero scritto dal router e dai dispositivi della rete:
-/// output non fidato (docs/PROJECT.md §7.3).
+/// The content is free text written by the router and by Hosts on the network:
+/// untrusted output (docs/PROJECT.md §7.3).
 pub async fn log(client: &Tr064Client) -> Result<Vec<String>, FrixError> {
     let r = client.call(SERVICE, "GetDeviceLog", &[]).await?;
     Ok(r.text("NewDeviceLog")?
         .lines()
-        .filter(|riga| !riga.trim().is_empty())
+        .filter(|line| !line.trim().is_empty())
         .map(str::to_owned)
         .collect())
 }

@@ -7,14 +7,14 @@ use rmcp::model::CallToolResult;
 use rmcp::{ErrorData, tool, tool_router};
 use serde::Serialize;
 
-use crate::response::{self, VoceSaltata};
+use crate::response::{self, SkippedEntryOut};
 use crate::server::FrixServer;
 
 #[derive(Debug, Serialize)]
 struct Devices {
     devices: Vec<DeviceOut>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
-    skipped: Vec<VoceSaltata>,
+    skipped: Vec<SkippedEntryOut>,
 }
 
 #[derive(Debug, Serialize)]
@@ -114,11 +114,11 @@ impl FrixServer {
     #[tool(
         name = "list_smarthome_devices",
         description = concat!(
-            "SmartHome Device del FRITZ!Box, identificati per AIN: nome, presenza, interruttore delle prese, potenza in W ed energia in Wh, temperatura in °C, termostato (temperatura attuale, impostata, ridotta, comfort). ",
-            dati_della_rete!()
+            "FRITZ!Box SmartHome Devices, identified by AIN: name, presence, outlet switch, power in W and energy in Wh, temperature in °C, thermostat (current, target, reduced and comfort temperature). ",
+            network_data!()
         ),
         annotations(
-            title = "Elenco degli SmartHome Device",
+            title = "SmartHome Device list",
             read_only_hint = true,
             destructive_hint = false,
             idempotent_hint = true,
@@ -126,19 +126,17 @@ impl FrixServer {
         )
     )]
     async fn list_smarthome_devices(&self) -> Result<CallToolResult, ErrorData> {
-        Ok(response::from_result_con_tetto(
-            self.smarthome_devices().await,
-        ))
+        Ok(response::from_result_capped(self.smarthome_devices().await))
     }
 }
 
 impl FrixServer {
     async fn smarthome_devices(&self) -> Result<(Devices, Option<EntryTruncation>), FrixError> {
-        let lista = homeauto::list(&self.client).await?;
-        let dati = Devices {
-            devices: lista.entries.into_iter().map(Into::into).collect(),
-            skipped: lista.skipped.into_iter().map(Into::into).collect(),
+        let list = homeauto::list(&self.client).await?;
+        let data = Devices {
+            devices: list.entries.into_iter().map(Into::into).collect(),
+            skipped: list.skipped.into_iter().map(Into::into).collect(),
         };
-        Ok((dati, lista.truncation))
+        Ok((data, list.truncation))
     }
 }

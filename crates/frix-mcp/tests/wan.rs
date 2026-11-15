@@ -1,5 +1,5 @@
-//! Tool WAN (`get_wan_status`, `get_bandwidth`, `get_dsl_status`) attraverso il
-//! protocollo MCP, sopra il transport a fixture.
+//! WAN tools (`get_wan_status`, `get_bandwidth`, `get_dsl_status`) through the
+//! MCP protocol, on top of the fixture transport.
 #![allow(
     clippy::unwrap_used,
     clippy::expect_used,
@@ -12,7 +12,7 @@ mod common;
 use frix_core::transport::HttpResponse;
 use serde_json::json;
 
-/// Transport del 7590 con la connessione predefinita su `WANIPConnection`.
+/// 7590 transport with the default connection on `WANIPConnection`.
 fn transport_ip() -> frix_core::transport::FixtureTransport {
     common::transport_7590().with_soap(
         "Layer3Forwarding:1",
@@ -25,53 +25,53 @@ fn transport_ip() -> frix_core::transport::FixtureTransport {
 }
 
 #[tokio::test]
-async fn get_wan_status_su_connessione_ip_scoperta_dal_router() {
+async fn get_wan_status_on_ip_connection_detected_from_the_router() {
     let transport = transport_ip();
-    let registro = transport.requests();
-    let mcp = common::avvia(transport).await;
+    let log = transport.requests();
+    let mcp = common::start(transport).await;
 
-    let esito = common::chiama(&mcp, "get_wan_status", json!({})).await;
+    let outcome = common::call(&mcp, "get_wan_status", json!({})).await;
 
-    assert!(!common::is_errore(&esito), "{esito:?}");
-    let dati = common::dati(&esito);
-    assert_eq!(dati["connection_type"], "IP");
-    assert_eq!(dati["connected"], true);
-    assert_eq!(dati["external_ip"], "198.51.100.7");
-    assert_eq!(dati["uptime_seconds"], 3600);
-    assert_eq!(dati["dns_servers"], json!(["198.51.100.1"]));
-    let azioni: Vec<String> = registro
+    assert!(!common::is_error(&outcome), "{outcome:?}");
+    let data = common::data(&outcome);
+    assert_eq!(data["connection_type"], "IP");
+    assert_eq!(data["connected"], true);
+    assert_eq!(data["external_ip"], "198.51.100.7");
+    assert_eq!(data["uptime_seconds"], 3600);
+    assert_eq!(data["dns_servers"], json!(["198.51.100.1"]));
+    let actions: Vec<String> = log
         .soap()
         .iter()
         .filter_map(|r| r.soap_action.clone())
         .collect();
     assert!(
-        !azioni.iter().any(|a| a.contains("WANPPPConnection")),
-        "{azioni:?}"
+        !actions.iter().any(|a| a.contains("WANPPPConnection")),
+        "{actions:?}"
     );
 }
 
 #[tokio::test]
-async fn get_wan_status_non_restituisce_mai_il_nome_utente_ppp() {
-    let mcp = common::avvia(common::transport_7590()).await;
+async fn get_wan_status_never_returns_the_ppp_username() {
+    let mcp = common::start(common::transport_7590()).await;
 
-    let esito = common::chiama(&mcp, "get_wan_status", json!({})).await;
+    let outcome = common::call(&mcp, "get_wan_status", json!({})).await;
 
-    assert!(!common::is_errore(&esito), "{esito:?}");
-    let testo = common::testo(&esito);
-    assert!(!testo.contains("utente-ppp-segreto"), "{testo}");
-    assert!(!testo.contains("provider.example"), "{testo}");
-    assert!(!testo.to_lowercase().contains("user"), "{testo}");
+    assert!(!common::is_error(&outcome), "{outcome:?}");
+    let text = common::text(&outcome);
+    assert!(!text.contains("utente-ppp-segreto"), "{text}");
+    assert!(!text.contains("provider.example"), "{text}");
+    assert!(!text.to_lowercase().contains("user"), "{text}");
 }
 
 #[tokio::test]
-async fn get_dsl_status_restituisce_sync_rate_snr_attenuazione_errori_e_profilo() {
-    let mcp = common::avvia(common::transport_7590()).await;
+async fn get_dsl_status_returns_sync_rate_snr_attenuation_errors_and_profile() {
+    let mcp = common::start(common::transport_7590()).await;
 
-    let esito = common::chiama(&mcp, "get_dsl_status", json!({})).await;
+    let outcome = common::call(&mcp, "get_dsl_status", json!({})).await;
 
-    assert!(!common::is_errore(&esito), "{esito:?}");
+    assert!(!common::is_error(&outcome), "{outcome:?}");
     assert_eq!(
-        common::dati(&esito),
+        common::data(&outcome),
         json!({
             "access_type": "DSL",
             "enabled": true,
@@ -106,24 +106,24 @@ async fn get_dsl_status_restituisce_sync_rate_snr_attenuazione_errori_e_profilo(
     );
 }
 
-/// La fixture di risposta con ogni argomento di uscita vuoto (`<NewX></NewX>`).
-fn risposta_vuota(relativo: &str) -> HttpResponse {
-    let corpo: Vec<String> = common::fixture(relativo)
+/// The response fixture with every output argument empty (`<NewX></NewX>`).
+fn empty_response(relative: &str) -> HttpResponse {
+    let body: Vec<String> = common::fixture(relative)
         .lines()
         .map(
-            |riga| match (riga.strip_prefix("<New"), riga.find('>'), riga.rfind("</")) {
-                (Some(_), Some(apertura), Some(chiusura)) if apertura < chiusura => {
-                    format!("{}{}", &riga[..=apertura], &riga[chiusura..])
+            |line| match (line.strip_prefix("<New"), line.find('>'), line.rfind("</")) {
+                (Some(_), Some(open), Some(close)) if open < close => {
+                    format!("{}{}", &line[..=open], &line[close..])
                 }
-                _ => riga.to_owned(),
+                _ => line.to_owned(),
             },
         )
         .collect();
-    HttpResponse::ok(corpo.join("\n"))
+    HttpResponse::ok(body.join("\n"))
 }
 
 #[tokio::test]
-async fn get_dsl_status_su_linea_non_dsl_restituisce_valori_vuoti_senza_errore() {
+async fn get_dsl_status_on_non_dsl_line_returns_empty_values_without_error() {
     let dsl = "WANDSLInterfaceConfig:1";
     let transport = common::transport_7590()
         .with_soap(
@@ -137,31 +137,31 @@ async fn get_dsl_status_su_linea_non_dsl_restituisce_valori_vuoti_senza_errore()
         .with_soap(
             dsl,
             "GetInfo",
-            risposta_vuota("responses/WANDSLInterfaceConfig-1/GetInfo.xml"),
+            empty_response("responses/WANDSLInterfaceConfig-1/GetInfo.xml"),
         )
         .with_soap(
             dsl,
             "X_AVM-DE_GetDSLInfo",
-            risposta_vuota("responses/WANDSLInterfaceConfig-1/X_AVM-DE_GetDSLInfo.xml"),
+            empty_response("responses/WANDSLInterfaceConfig-1/X_AVM-DE_GetDSLInfo.xml"),
         )
         .with_soap(
             dsl,
             "GetStatisticsTotal",
-            risposta_vuota("responses/WANDSLInterfaceConfig-1/GetStatisticsTotal.xml"),
+            empty_response("responses/WANDSLInterfaceConfig-1/GetStatisticsTotal.xml"),
         );
-    let mcp = common::avvia(transport).await;
+    let mcp = common::start(transport).await;
 
-    let esito = common::chiama(&mcp, "get_dsl_status", json!({})).await;
+    let outcome = common::call(&mcp, "get_dsl_status", json!({})).await;
 
-    assert!(!common::is_errore(&esito), "{esito:?}");
-    let vuota = json!({
+    assert!(!common::is_error(&outcome), "{outcome:?}");
+    let empty = json!({
         "current_rate_kbps": null,
         "max_rate_kbps": null,
         "snr_margin_db": null,
         "attenuation_db": null
     });
     assert_eq!(
-        common::dati(&esito),
+        common::data(&outcome),
         json!({
             "access_type": "Ethernet",
             "enabled": null,
@@ -170,8 +170,8 @@ async fn get_dsl_status_su_linea_non_dsl_restituisce_valori_vuoti_senza_errore()
             "modulation": "",
             "profile": "",
             "data_path": "",
-            "downstream": vuota,
-            "upstream": vuota,
+            "downstream": empty,
+            "upstream": empty,
             "errors": {
                 "crc": null,
                 "fec": null,
@@ -187,14 +187,14 @@ async fn get_dsl_status_su_linea_non_dsl_restituisce_valori_vuoti_senza_errore()
 }
 
 #[tokio::test]
-async fn get_bandwidth_restituisce_utilizzo_corrente_e_serie_per_priorita() {
-    let mcp = common::avvia(common::transport_7590()).await;
+async fn get_bandwidth_returns_current_usage_and_series_by_priority() {
+    let mcp = common::start(common::transport_7590()).await;
 
-    let esito = common::chiama(&mcp, "get_bandwidth", json!({})).await;
+    let outcome = common::call(&mcp, "get_bandwidth", json!({})).await;
 
-    assert!(!common::is_errore(&esito), "{esito:?}");
+    assert!(!common::is_error(&outcome), "{outcome:?}");
     assert_eq!(
-        common::dati(&esito),
+        common::data(&outcome),
         json!({
             "sync_group": { "name": "sync_dsl", "mode": "VDSL" },
             "max_downstream_bps": 31_250_000,
@@ -220,7 +220,7 @@ async fn get_bandwidth_restituisce_utilizzo_corrente_e_serie_per_priorita() {
 }
 
 #[tokio::test]
-async fn get_bandwidth_non_restituisce_contatori_negativi_dopo_il_wrap() {
+async fn get_bandwidth_never_returns_negative_counters_after_the_wrap() {
     let transport = common::transport_7590().with_soap(
         "WANCommonInterfaceConfig:1",
         "GetTotalBytesReceived",
@@ -229,26 +229,26 @@ async fn get_bandwidth_non_restituisce_contatori_negativi_dopo_il_wrap() {
                 .replace("2345678901", "-1294967296"),
         ),
     );
-    let mcp = common::avvia(transport).await;
+    let mcp = common::start(transport).await;
 
-    let esito = common::chiama(&mcp, "get_bandwidth", json!({})).await;
+    let outcome = common::call(&mcp, "get_bandwidth", json!({})).await;
 
-    assert!(!common::is_errore(&esito), "{esito:?}");
+    assert!(!common::is_error(&outcome), "{outcome:?}");
     assert_eq!(
-        common::dati(&esito)["total_bytes_received"],
+        common::data(&outcome)["total_bytes_received"],
         3_000_000_000_u64
     );
 }
 
 #[tokio::test]
-async fn get_wan_status_su_connessione_ppp() {
-    let mcp = common::avvia(common::transport_7590()).await;
+async fn get_wan_status_on_ppp_connection() {
+    let mcp = common::start(common::transport_7590()).await;
 
-    let esito = common::chiama(&mcp, "get_wan_status", json!({})).await;
+    let outcome = common::call(&mcp, "get_wan_status", json!({})).await;
 
-    assert!(!common::is_errore(&esito), "{esito:?}");
+    assert!(!common::is_error(&outcome), "{outcome:?}");
     assert_eq!(
-        common::dati(&esito),
+        common::data(&outcome),
         json!({
             "connection_type": "PPP",
             "enabled": true,

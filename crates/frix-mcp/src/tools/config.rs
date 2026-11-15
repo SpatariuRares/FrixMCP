@@ -1,4 +1,4 @@
-//! Configurazione e stato del router: `get_lan_config`, `list_port_forwardings`,
+//! Router configuration and state: `get_lan_config`, `list_port_forwardings`,
 //! `get_device_log`, `get_time_and_update` (docs/PROJECT.md §8.1).
 
 use frix_core::FrixError;
@@ -11,7 +11,7 @@ use rmcp::schemars::JsonSchema;
 use rmcp::{ErrorData, tool, tool_router};
 use serde::{Deserialize, Serialize};
 
-use crate::response::{self, VoceSaltata};
+use crate::response::{self, SkippedEntryOut};
 use crate::server::FrixServer;
 
 #[derive(Debug, Serialize)]
@@ -51,13 +51,13 @@ struct AutoUpdate {
 #[derive(Debug, Serialize)]
 #[expect(
     clippy::struct_field_names,
-    reason = "port_forwardings è la chiave JSON che vede l'Agent"
+    reason = "port_forwardings is the JSON key the Agent sees"
 )]
 struct PortForwardings {
     connection: &'static str,
     port_forwardings: Vec<PortForwarding>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
-    skipped: Vec<VoceSaltata>,
+    skipped: Vec<SkippedEntryOut>,
 }
 
 #[derive(Debug, Serialize)]
@@ -72,22 +72,22 @@ struct PortForwarding {
     lease_duration_seconds: u32,
 }
 
-/// Righe al massimo in una pagina di `get_device_log`.
-const MAX_RIGHE_LOG: u32 = 1000;
+/// Maximum number of lines in a `get_device_log` page.
+const MAX_LOG_LINES: u32 = 1000;
 
 #[derive(Debug, Deserialize, JsonSchema)]
 #[schemars(crate = "rmcp::schemars")]
 #[serde(deny_unknown_fields)]
-struct PaginaLog {
-    /// Quante righe restituire (1–1000).
-    #[serde(default = "righe_predefinite")]
+struct LogPage {
+    /// How many lines to return (1–1000).
+    #[serde(default = "default_lines")]
     lines: u32,
-    /// Quante righe saltare, contando dalla più recente.
+    /// How many lines to skip, counting from the most recent.
     #[serde(default)]
     offset: u32,
 }
 
-const fn righe_predefinite() -> u32 {
+const fn default_lines() -> u32 {
     100
 }
 
@@ -103,11 +103,11 @@ impl FrixServer {
     #[tool(
         name = "get_lan_config",
         description = concat!(
-            "Configurazione della LAN del FRITZ!Box: server DHCP e intervallo di indirizzi, DNS, maschera di sottorete, dominio, router. ",
-            dati_della_rete!()
+            "FRITZ!Box LAN configuration: DHCP server and address range, DNS, subnet mask, domain, routers. ",
+            network_data!()
         ),
         annotations(
-            title = "Configurazione LAN",
+            title = "LAN configuration",
             read_only_hint = true,
             destructive_hint = false,
             idempotent_hint = true,
@@ -121,11 +121,11 @@ impl FrixServer {
     #[tool(
         name = "get_time_and_update",
         description = concat!(
-            "Ora locale del FRITZ!Box, fuso orario, server NTP e stato degli aggiornamenti automatici di FRITZ!OS (modalità, ultima versione installata). ",
-            dati_della_rete!()
+            "FRITZ!Box local time, time zone, NTP servers and state of the automatic FRITZ!OS updates (mode, last installed version). ",
+            network_data!()
         ),
         annotations(
-            title = "Ora e aggiornamenti",
+            title = "Time and updates",
             read_only_hint = true,
             destructive_hint = false,
             idempotent_hint = true,
@@ -139,11 +139,11 @@ impl FrixServer {
     #[tool(
         name = "get_device_log",
         description = concat!(
-            "Log di sistema del FRITZ!Box, una pagina di righe dalla più recente: `lines` righe (predefinito 100, massimo 1000) a partire da `offset` (predefinito 0). `total_lines` dice quante righe ha il log. Le righe sono testo libero scritto dal router e dai dispositivi della rete. ",
-            dati_della_rete!()
+            "FRITZ!Box system log, one page of lines starting from the most recent: `lines` lines (default 100, maximum 1000) starting at `offset` (default 0). `total_lines` says how many lines the log has. The lines are free text written by the router and by the devices on the network. ",
+            network_data!()
         ),
         annotations(
-            title = "Log di sistema",
+            title = "System log",
             read_only_hint = true,
             destructive_hint = false,
             idempotent_hint = true,
@@ -152,19 +152,19 @@ impl FrixServer {
     )]
     async fn get_device_log(
         &self,
-        Parameters(pagina): Parameters<PaginaLog>,
+        Parameters(page): Parameters<LogPage>,
     ) -> Result<CallToolResult, ErrorData> {
-        Ok(response::from_result_righe(self.device_log(pagina).await))
+        Ok(response::from_result_lines(self.device_log(page).await))
     }
 
     #[tool(
         name = "list_port_forwardings",
         description = concat!(
-            "Inoltri porta (port forwarding) della connessione Internet del FRITZ!Box: descrizione, abilitato, protocollo, porta esterna, Host e porta interni. Legge il servizio della connessione attiva (PPP o IP). ",
-            dati_della_rete!()
+            "Port forwarding rules of the FRITZ!Box Internet connection: description, enabled, protocol, external port, internal Host and port. Reads the service of the active connection (PPP or IP). ",
+            network_data!()
         ),
         annotations(
-            title = "Inoltri porta",
+            title = "Port forwarding",
             read_only_hint = true,
             destructive_hint = false,
             idempotent_hint = true,
@@ -172,9 +172,7 @@ impl FrixServer {
         )
     )]
     async fn list_port_forwardings(&self) -> Result<CallToolResult, ErrorData> {
-        Ok(response::from_result_con_tetto(
-            self.port_forwardings().await,
-        ))
+        Ok(response::from_result_capped(self.port_forwardings().await))
     }
 }
 
@@ -195,13 +193,13 @@ impl FrixServer {
     }
 
     async fn time_and_update(&self) -> Result<TimeAndUpdate, FrixError> {
-        let ora = time::info(&self.client).await?;
+        let clock = time::info(&self.client).await?;
         let update = user_interface::auto_update(&self.client).await?;
         Ok(TimeAndUpdate {
-            local_time: ora.local_time,
-            time_zone: ora.time_zone,
-            daylight_saving: ora.daylight_saving,
-            ntp_servers: ora.ntp_servers,
+            local_time: clock.local_time,
+            time_zone: clock.time_zone,
+            daylight_saving: clock.daylight_saving,
+            ntp_servers: clock.ntp_servers,
             auto_update: AutoUpdate {
                 mode: update.mode,
                 current_firmware_version: update.current_firmware_version,
@@ -215,15 +213,15 @@ impl FrixServer {
     async fn port_forwardings(
         &self,
     ) -> Result<(PortForwardings, Option<EntryTruncation>), FrixError> {
-        let connessione = wan_connection::active_kind(&self.client).await?;
-        let inoltri = wan_connection::port_mappings(&self.client, connessione).await?;
-        let dati = PortForwardings {
-            connection: match connessione {
+        let connection = wan_connection::active_kind(&self.client).await?;
+        let forwardings = wan_connection::port_mappings(&self.client, connection).await?;
+        let data = PortForwardings {
+            connection: match connection {
                 ConnectionKind::Ppp => "ppp",
                 ConnectionKind::Ip => "ip",
             },
-            skipped: inoltri.skipped.into_iter().map(Into::into).collect(),
-            port_forwardings: inoltri
+            skipped: forwardings.skipped.into_iter().map(Into::into).collect(),
+            port_forwardings: forwardings
                 .entries
                 .into_iter()
                 .map(|i| PortForwarding {
@@ -238,25 +236,25 @@ impl FrixServer {
                 })
                 .collect(),
         };
-        Ok((dati, inoltri.truncation))
+        Ok((data, forwardings.truncation))
     }
 
-    async fn device_log(&self, pagina: PaginaLog) -> Result<DeviceLog, FrixError> {
-        if !(1..=MAX_RIGHE_LOG).contains(&pagina.lines) {
+    async fn device_log(&self, page: LogPage) -> Result<DeviceLog, FrixError> {
+        if !(1..=MAX_LOG_LINES).contains(&page.lines) {
             return Err(FrixError::Validation(format!(
-                "lines deve essere tra 1 e {MAX_RIGHE_LOG}"
+                "lines must be between 1 and {MAX_LOG_LINES}"
             )));
         }
-        let righe = device_info::log(&self.client).await?;
-        let total_lines = righe.len();
-        let lines = righe
+        let all_lines = device_info::log(&self.client).await?;
+        let total_lines = all_lines.len();
+        let lines = all_lines
             .into_iter()
-            .skip(usize::try_from(pagina.offset).unwrap_or(usize::MAX))
-            .take(usize::try_from(pagina.lines).unwrap_or(usize::MAX))
+            .skip(usize::try_from(page.offset).unwrap_or(usize::MAX))
+            .take(usize::try_from(page.lines).unwrap_or(usize::MAX))
             .collect();
         Ok(DeviceLog {
             total_lines,
-            offset: pagina.offset,
+            offset: page.offset,
             lines,
         })
     }

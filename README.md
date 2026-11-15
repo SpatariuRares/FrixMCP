@@ -64,6 +64,7 @@ openssl s_client -connect 192.168.178.1:49443 </dev/null 2>/dev/null \
 host = "192.168.178.1"
 username = "frixmcp"
 # hide_serial_number = true   # get_system_info omits the serial number
+# language = "it"             # startup errors, help and summary on stderr: "en" (default) or "it"
 
 [tls]
 mode = "pin"
@@ -71,6 +72,8 @@ pinned_sha256 = "AB:CD:..."   # the fingerprint from step 3
 ```
 
 Unknown keys are an error. Command-line flags override the file: run `frix-mcp --help`.
+
+`language` only changes what you read on stderr. What the model reads (tool descriptions and tool errors) is always English.
 
 **5. Add the server to your MCP client.** For Claude Code, create `.mcp.json` in the folder you work from (or add the same entry to Claude Desktop's `claude_desktop_config.json`):
 
@@ -107,8 +110,6 @@ On startup the server prints the router account and its rights on stderr. In Cla
 | `get_access_control` | parental control profiles, or the profile of one device |
 | `list_smarthome_devices` | Smart Home devices (read-only) |
 
-Tool descriptions and messages are in Italian; MCP clients and models handle them without issue.
-
 ## Security model
 
 The guarantees hold only if the AI has no shell on your computer. A model that can run commands can read the password from the keyring and talk to the router directly, bypassing this server. Use Claude Desktop, or Claude Code with Bash denied, for example with this `.claude/settings.json` next to `.mcp.json`:
@@ -137,7 +138,7 @@ cargo test --all-features      # no router or network needed
 cargo deny check
 ```
 
-The tests run against recorded router responses with personal data removed (`crates/frix-core/tests/fixtures/`). To record your own, see `cargo xtask record`. The design document, glossary and decision records (`docs/PROJECT.md`, `GLOSSARY.md`, `docs/adr/`) are in Italian.
+The tests run against recorded router responses with personal data removed (`crates/frix-core/tests/fixtures/`). To record your own, see `cargo xtask record`. The design document, glossary and decision records are in `docs/PROJECT.md`, `GLOSSARY.md` and `docs/adr/`.
 
 ## License
 

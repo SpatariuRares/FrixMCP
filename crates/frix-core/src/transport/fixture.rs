@@ -1,4 +1,4 @@
-//! `FixtureTransport`: risponde da file, senza rete. Serve ai test (spec #1, "Testing Decisions").
+//! `FixtureTransport`: answers from files, without network. Used by tests (spec #1, "Testing Decisions").
 
 use std::collections::HashMap;
 use std::path::Path;
@@ -8,36 +8,36 @@ use super::{HttpRequest, HttpResponse, HttpTransport, Method, SendFuture};
 use crate::error::FrixError;
 use crate::tr064::SERVICE_URN_PREFIX;
 
-/// Transport a fixture: `GET` serve i file di descrizione, `POST` le risposte SOAP
-/// registrate per `SOAPACTION`. Ogni richiesta ricevuta finisce nel [`RequestLog`].
+/// Fixture transport: `GET` serves the description files, `POST` the SOAP responses
+/// recorded per `SOAPACTION`. Every request received ends up in the [`RequestLog`].
 ///
-/// Layout delle risposte SOAP su disco: `<Servizio>-<istanza>/<Azione>.xml`,
-/// per esempio `DeviceInfo-1/GetInfo.xml` o `X_AVM-DE_HostFilter-1/GetWANAccessByIP.xml`.
-/// Una risposta che vale solo per certi argomenti in ingresso (azioni `Generic…` con un
-/// indice) si chiama `<Azione>@<Argomento>=<valore>.xml`, per esempio
+/// On-disk layout of SOAP responses: `<Service>-<instance>/<Action>.xml`,
+/// for example `DeviceInfo-1/GetInfo.xml` or `X_AVM-DE_HostFilter-1/GetWANAccessByIP.xml`.
+/// A response valid only for certain input arguments (`Generic…` actions with an
+/// index) is named `<Action>@<Argument>=<value>.xml`, for example
 /// `GetGenericAssociatedDeviceInfo@NewAssociatedDeviceIndex=0.xml`.
 #[derive(Debug, Default)]
 pub struct FixtureTransport {
     files: HashMap<String, HttpResponse>,
     soap: HashMap<String, HttpResponse>,
-    soap_by_args: Vec<RispostaPerArgomenti>,
+    soap_by_args: Vec<ResponseByArgs>,
     log: RequestLog,
 }
 
-/// Risposta a `soap_action` quando la richiesta contiene tutti gli argomenti `args`.
+/// Response to `soap_action` when the request contains all the arguments `args`.
 #[derive(Debug)]
-struct RispostaPerArgomenti {
+struct ResponseByArgs {
     soap_action: String,
     args: Vec<(String, String)>,
     response: HttpResponse,
 }
 
-/// Registro condiviso delle richieste arrivate a un [`FixtureTransport`].
+/// Shared log of the requests that reached a [`FixtureTransport`].
 #[derive(Debug, Clone, Default)]
 pub struct RequestLog(Arc<Mutex<Vec<HttpRequest>>>);
 
 impl RequestLog {
-    /// Copia delle richieste ricevute finora, in ordine.
+    /// Copy of the requests received so far, in order.
     #[must_use]
     pub fn all(&self) -> Vec<HttpRequest> {
         self.0
@@ -46,7 +46,7 @@ impl RequestLog {
             .clone()
     }
 
-    /// Le sole richieste SOAP (`POST`) ricevute finora.
+    /// Only the SOAP (`POST`) requests received so far.
     #[must_use]
     pub fn soap(&self) -> Vec<HttpRequest> {
         self.all()
@@ -64,63 +64,63 @@ impl RequestLog {
 }
 
 impl FixtureTransport {
-    /// Transport vuoto: ogni richiesta fallisce con un errore di trasporto.
+    /// Empty transport: every request fails with a transport error.
     #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
-    /// Serve ogni file di `dir` in `GET /<nome-file>` (`tr64desc.xml`, SCPD).
+    /// Serves every file of `dir` at `GET /<file-name>` (`tr64desc.xml`, SCPD).
     pub fn with_descriptions_dir(mut self, dir: &Path) -> std::io::Result<Self> {
-        for voce in std::fs::read_dir(dir)? {
-            let path = voce?.path();
-            if let Some(nome) = path.file_name().and_then(|n| n.to_str()) {
-                let contenuto = std::fs::read_to_string(&path)?;
+        for entry in std::fs::read_dir(dir)? {
+            let path = entry?.path();
+            if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+                let content = std::fs::read_to_string(&path)?;
                 self.files
-                    .insert(format!("/{nome}"), HttpResponse::ok(contenuto));
+                    .insert(format!("/{name}"), HttpResponse::ok(content));
             }
         }
         Ok(self)
     }
 
-    /// Serve `body` in `GET path`, sostituendo un eventuale file già presente.
+    /// Serves `body` at `GET path`, replacing any file already there.
     #[must_use]
     pub fn with_file(self, path: &str, body: impl Into<String>) -> Self {
         self.with_get(path, HttpResponse::ok(body))
     }
 
-    /// Risponde a `GET path` con `response`, per esempio un errore HTTP.
+    /// Answers `GET path` with `response`, for example an HTTP error.
     #[must_use]
     pub fn with_get(mut self, path: &str, response: HttpResponse) -> Self {
         self.files.insert(path.to_owned(), response);
         self
     }
 
-    /// Carica le risposte SOAP `200 OK` da `dir/<Servizio>-<istanza>/<Azione>.xml`.
+    /// Loads the `200 OK` SOAP responses from `dir/<Service>-<instance>/<Action>.xml`.
     pub fn with_responses_dir(mut self, dir: &Path) -> std::io::Result<Self> {
-        for servizio in std::fs::read_dir(dir)? {
-            let servizio = servizio?.path();
-            let Some(nome) = servizio.file_name().and_then(|n| n.to_str()) else {
+        for service_dir in std::fs::read_dir(dir)? {
+            let service_dir = service_dir?.path();
+            let Some(name) = service_dir.file_name().and_then(|n| n.to_str()) else {
                 continue;
             };
-            let Some((tipo, istanza)) = nome.rsplit_once('-') else {
+            let Some((kind, instance)) = name.rsplit_once('-') else {
                 continue;
             };
-            let service = format!("{tipo}:{istanza}");
-            for azione in std::fs::read_dir(&servizio)? {
-                let azione = azione?.path();
-                if azione.extension().and_then(|e| e.to_str()) != Some("xml") {
+            let service = format!("{kind}:{instance}");
+            for file in std::fs::read_dir(&service_dir)? {
+                let file = file?.path();
+                if file.extension().and_then(|e| e.to_str()) != Some("xml") {
                     continue;
                 }
-                let Some(stem) = azione.file_stem().and_then(|s| s.to_str()) else {
+                let Some(stem) = file.file_stem().and_then(|s| s.to_str()) else {
                     continue;
                 };
-                let body = HttpResponse::ok(std::fs::read_to_string(&azione)?);
+                let body = HttpResponse::ok(std::fs::read_to_string(&file)?);
                 self = match stem.split_once('@') {
-                    Some((action, argomenti)) => {
-                        let args: Vec<(&str, &str)> = argomenti
+                    Some((action, arg_list)) => {
+                        let args: Vec<(&str, &str)> = arg_list
                             .split('&')
-                            .filter_map(|coppia| coppia.split_once('='))
+                            .filter_map(|pair| pair.split_once('='))
                             .collect();
                         self.with_soap_args(&service, action, &args, body)
                     }
@@ -131,8 +131,8 @@ impl FixtureTransport {
         Ok(self)
     }
 
-    /// Risposta a `service#action`, per esempio `("DeviceInfo:1", "GetInfo")`;
-    /// sostituisce una risposta già presente (utile per fault e casi limite).
+    /// Response to `service#action`, for example `("DeviceInfo:1", "GetInfo")`;
+    /// replaces a response already there (useful for faults and edge cases).
     #[must_use]
     pub fn with_soap(mut self, service: &str, action: &str, response: HttpResponse) -> Self {
         self.soap
@@ -140,10 +140,10 @@ impl FixtureTransport {
         self
     }
 
-    /// Risposta a `service#action` solo quando la richiesta porta tutti gli argomenti
-    /// `args` (per esempio `[("NewAssociatedDeviceIndex", "0")]`); ha la precedenza su
-    /// [`Self::with_soap`] e sostituisce una risposta già presente per gli stessi argomenti.
-    /// I valori si confrontano con il corpo SOAP così come è stato inviato.
+    /// Response to `service#action` only when the request carries all the arguments
+    /// `args` (for example `[("NewAssociatedDeviceIndex", "0")]`); takes precedence over
+    /// [`Self::with_soap`] and replaces a response already there for the same arguments.
+    /// Values are compared with the SOAP body as it was sent.
     #[must_use]
     pub fn with_soap_args(
         mut self,
@@ -155,11 +155,11 @@ impl FixtureTransport {
         let soap_action = format!("{SERVICE_URN_PREFIX}{service}#{action}");
         let args: Vec<(String, String)> = args
             .iter()
-            .map(|(nome, valore)| ((*nome).to_owned(), (*valore).to_owned()))
+            .map(|(name, value)| ((*name).to_owned(), (*value).to_owned()))
             .collect();
         self.soap_by_args
             .retain(|r| r.soap_action != soap_action || r.args != args);
-        self.soap_by_args.push(RispostaPerArgomenti {
+        self.soap_by_args.push(ResponseByArgs {
             soap_action,
             args,
             response,
@@ -167,30 +167,30 @@ impl FixtureTransport {
         self
     }
 
-    /// Registro delle richieste ricevute, da tenere prima di cedere il transport.
+    /// Log of the received requests, to keep before handing over the transport.
     #[must_use]
     pub fn requests(&self) -> RequestLog {
         self.log.clone()
     }
 
     fn respond(&self, request: &HttpRequest) -> Result<HttpResponse, FrixError> {
-        let risposta = match (request.method, &request.soap_action) {
+        let response = match (request.method, &request.soap_action) {
             (Method::Post, Some(soap_action)) => self
                 .soap_by_args
                 .iter()
                 .find(|r| {
                     &r.soap_action == soap_action
-                        && r.args.iter().all(|(nome, valore)| {
-                            request.body.contains(&format!("<{nome}>{valore}</{nome}>"))
+                        && r.args.iter().all(|(name, value)| {
+                            request.body.contains(&format!("<{name}>{value}</{name}>"))
                         })
                 })
                 .map(|r| r.response.clone())
                 .or_else(|| self.soap.get(soap_action).cloned()),
             _ => self.files.get(&request.path).cloned(),
         };
-        risposta.ok_or_else(|| {
+        response.ok_or_else(|| {
             FrixError::Transport(format!(
-                "nessuna fixture per {:?} {} {:?}",
+                "no fixture for {:?} {} {:?}",
                 request.method, request.path, request.soap_action
             ))
         })
@@ -199,8 +199,8 @@ impl FixtureTransport {
 
 impl HttpTransport for FixtureTransport {
     fn send(&self, request: HttpRequest) -> SendFuture<'_> {
-        let risposta = self.respond(&request);
+        let response = self.respond(&request);
         self.log.push(request);
-        Box::pin(std::future::ready(risposta))
+        Box::pin(std::future::ready(response))
     }
 }

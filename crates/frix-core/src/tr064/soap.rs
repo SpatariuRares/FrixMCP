@@ -1,4 +1,4 @@
-//! Envelope SOAP con escape XML rigoroso, parsing delle risposte e dei fault `UPnP`
+//! SOAP envelope with strict XML escaping, parsing of responses and `UPnP` faults
 //! (docs/PROJECT.md §5.1).
 
 use std::collections::BTreeMap;
@@ -7,23 +7,23 @@ use super::xml;
 use crate::error::FrixError;
 use crate::transport::HttpResponse;
 
-/// Costruisce l'envelope SOAP per `service_type#action` con gli argomenti dati.
+/// Builds the SOAP envelope for `service_type#action` with the given arguments.
 ///
-/// Rifiuta i caratteri che XML 1.0 non può rappresentare (controlli diversi da
-/// tabulazione e a capo) invece di inviarli al router.
+/// Rejects characters that XML 1.0 cannot represent (controls other than tab and
+/// newline) instead of sending them to the router.
 pub(crate) fn build_envelope(
     service_type: &str,
     action: &str,
     args: &[(&str, &str)],
 ) -> Result<String, FrixError> {
     let service_type = escape(service_type)?;
-    let action = nome_xml(action)?;
-    let mut corpo = String::new();
-    for (nome, valore) in args {
-        let nome = nome_xml(nome)?;
-        let valore = escape(valore)?;
-        for parte in ["<", nome, ">", &valore, "</", nome, ">"] {
-            corpo.push_str(parte);
+    let action = xml_name(action)?;
+    let mut body = String::new();
+    for (name, value) in args {
+        let name = xml_name(name)?;
+        let value = escape(value)?;
+        for part in ["<", name, ">", &value, "</", name, ">"] {
+            body.push_str(part);
         }
     }
     Ok(format!(
@@ -31,96 +31,94 @@ pub(crate) fn build_envelope(
             r#"<?xml version="1.0" encoding="utf-8"?>"#,
             r#"<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" "#,
             r#"s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">"#,
-            r#"<s:Body><u:{action} xmlns:u="{service_type}">{corpo}</u:{action}></s:Body>"#,
+            r#"<s:Body><u:{action} xmlns:u="{service_type}">{body}</u:{action}></s:Body>"#,
             r#"</s:Envelope>"#
         ),
         action = action,
         service_type = service_type,
-        corpo = corpo,
+        body = body,
     ))
 }
 
-/// Escape per testo e valori di attributo XML.
-pub(crate) fn escape(valore: &str) -> Result<String, FrixError> {
-    let mut uscita = String::with_capacity(valore.len());
-    for c in valore.chars() {
+/// Escaping for XML text and attribute values.
+pub(crate) fn escape(value: &str) -> Result<String, FrixError> {
+    let mut out = String::with_capacity(value.len());
+    for c in value.chars() {
         match c {
-            '&' => uscita.push_str("&amp;"),
-            '<' => uscita.push_str("&lt;"),
-            '>' => uscita.push_str("&gt;"),
-            '"' => uscita.push_str("&quot;"),
-            '\'' => uscita.push_str("&apos;"),
-            '\t' | '\n' | '\r' => uscita.push(c),
+            '&' => out.push_str("&amp;"),
+            '<' => out.push_str("&lt;"),
+            '>' => out.push_str("&gt;"),
+            '"' => out.push_str("&quot;"),
+            '\'' => out.push_str("&apos;"),
+            '\t' | '\n' | '\r' => out.push(c),
             c if c.is_control() => {
                 return Err(FrixError::Validation(format!(
-                    "carattere di controllo U+{:04X} non ammesso in un argomento",
+                    "control character U+{:04X} not allowed in an argument",
                     u32::from(c)
                 )));
             }
-            c => uscita.push(c),
+            c => out.push(c),
         }
     }
-    Ok(uscita)
+    Ok(out)
 }
 
-/// I nomi di azioni e argomenti vengono dallo SCPD, ma non si mettono mai in un tag senza controllo.
-fn nome_xml(nome: &str) -> Result<&str, FrixError> {
-    let valido = !nome.is_empty()
-        && nome
+/// Action and argument names come from the SCPD, but never go into a tag unchecked.
+fn xml_name(name: &str) -> Result<&str, FrixError> {
+    let valid = !name.is_empty()
+        && name
             .chars()
             .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-');
-    if valido {
-        Ok(nome)
+    if valid {
+        Ok(name)
     } else {
-        Err(FrixError::Validation(format!(
-            "nome XML non valido: {nome:?}"
-        )))
+        Err(FrixError::Validation(format!("invalid XML name: {name:?}")))
     }
 }
 
-/// Argomenti in ingresso di `action` in un envelope di richiesta, in ordine.
+/// Input arguments of `action` in a request envelope, in order.
 pub(crate) fn request_args(
     envelope: &str,
     action: &str,
 ) -> Result<Vec<(String, String)>, FrixError> {
-    let radice = xml::parse(envelope)?;
-    let elemento = radice
+    let root = xml::parse(envelope)?;
+    let element = root
         .descendants(action)
         .into_iter()
         .next()
-        .ok_or_else(|| FrixError::Parse(format!("manca {action} nell'envelope")))?;
-    Ok(elemento
+        .ok_or_else(|| FrixError::Parse(format!("missing {action} in the envelope")))?;
+    Ok(element
         .children
         .iter()
         .map(|c| (c.name.clone(), c.text.clone()))
         .collect())
 }
 
-/// Argomenti di uscita di `action` dalla risposta, o l'errore di dominio del fault.
+/// Output arguments of `action` from the response, or the fault's domain error.
 pub(crate) fn parse_response(
     action: &str,
-    risposta: &HttpResponse,
+    response: &HttpResponse,
 ) -> Result<BTreeMap<String, String>, FrixError> {
-    if risposta.status == 401 {
+    if response.status == 401 {
         return Err(FrixError::Unauthenticated);
     }
-    let documento = xml::parse(&risposta.body);
-    if let Ok(radice) = &documento
-        && let Some(fault) = radice.descendants("Fault").first()
+    let document = xml::parse(&response.body);
+    if let Ok(root) = &document
+        && let Some(fault) = root.descendants("Fault").first()
     {
         return Err(fault_error(fault));
     }
-    if risposta.status != 200 {
-        return Err(FrixError::Transport(format!("HTTP {}", risposta.status)));
+    if response.status != 200 {
+        return Err(FrixError::Transport(format!("HTTP {}", response.status)));
     }
-    let radice = documento?;
-    let atteso = format!("{action}Response");
-    let elemento = radice
-        .descendants(&atteso)
+    let root = document?;
+    let expected = format!("{action}Response");
+    let element = root
+        .descendants(&expected)
         .into_iter()
         .next()
-        .ok_or_else(|| FrixError::Parse(format!("manca {atteso}")))?;
-    Ok(elemento
+        .ok_or_else(|| FrixError::Parse(format!("missing {expected}")))?;
+    Ok(element
         .children
         .iter()
         .map(|c| (c.name.clone(), c.text.clone()))
@@ -128,19 +126,19 @@ pub(crate) fn parse_response(
 }
 
 fn fault_error(fault: &xml::Element) -> FrixError {
-    let errore = fault.descendants("UPnPError").into_iter().next();
-    let codice = errore
+    let upnp_error = fault.descendants("UPnPError").into_iter().next();
+    let code = upnp_error
         .and_then(|e| e.child_text("errorCode"))
         .and_then(|c| c.trim().parse::<u16>().ok());
-    let description = errore
+    let description = upnp_error
         .and_then(|e| e.child_text("errorDescription"))
         .unwrap_or_default()
         .trim()
         .to_owned();
-    match codice {
+    match code {
         Some(401) => FrixError::Unauthenticated,
         Some(402) => FrixError::InvalidArgs { description },
-        // servizio e diritti li aggiunge `Tr064Client::call`, che li conosce
+        // service and rights are added by `Tr064Client::call`, which knows them
         Some(606) => FrixError::NotAuthorized {
             action: String::new(),
             rights: None,
@@ -150,7 +148,7 @@ fn fault_error(fault: &xml::Element) -> FrixError {
         Some(820) => FrixError::RouterInternal { description },
         Some(code @ 866..=868) => FrixError::SecondFactorRequired { code },
         Some(code) => FrixError::Soap { code, description },
-        None => FrixError::Parse("fault SOAP senza errorCode".into()),
+        None => FrixError::Parse("SOAP fault without errorCode".into()),
     }
 }
 
@@ -166,7 +164,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn envelope_escapa_i_caratteri_speciali_negli_argomenti() {
+    fn envelope_escapes_special_characters_in_arguments() {
         let envelope = build_envelope(
             "urn:dslforum-org:service:Hosts:1",
             "X_AVM-DE_SetHostNameByMACAddress",
@@ -187,7 +185,7 @@ mod tests {
     }
 
     #[test]
-    fn envelope_non_permette_di_chiudere_il_tag_e_iniettarne_un_altro() {
+    fn envelope_does_not_allow_closing_the_tag_and_injecting_another() {
         let envelope = build_envelope(
             "urn:dslforum-org:service:Hosts:1",
             "GetSpecificHostEntry",
@@ -196,17 +194,14 @@ mod tests {
         .unwrap();
 
         assert!(!envelope.contains("<NewEnable>"));
-        let radice = xml::parse(&envelope).unwrap();
-        let argomenti = &radice.descendants("GetSpecificHostEntry")[0].children;
-        assert_eq!(argomenti.len(), 1);
-        assert_eq!(
-            argomenti[0].text,
-            "</NewMACAddress><NewEnable>1</NewEnable>"
-        );
+        let root = xml::parse(&envelope).unwrap();
+        let args = &root.descendants("GetSpecificHostEntry")[0].children;
+        assert_eq!(args.len(), 1);
+        assert_eq!(args[0].text, "</NewMACAddress><NewEnable>1</NewEnable>");
     }
 
     #[test]
-    fn envelope_senza_argomenti_ha_l_elemento_azione_vuoto() {
+    fn envelope_without_arguments_has_an_empty_action_element() {
         let envelope = build_envelope(
             "urn:dslforum-org:service:DeviceInfo:1",
             "GetSecurityPort",
@@ -220,26 +215,26 @@ mod tests {
     }
 
     #[test]
-    fn envelope_rifiuta_i_caratteri_di_controllo() {
-        let errore = build_envelope(
+    fn envelope_rejects_control_characters() {
+        let error = build_envelope(
             "urn:dslforum-org:service:Hosts:1",
             "X_AVM-DE_SetHostNameByMACAddress",
-            &[("NewHostName", "nome\u{0}nascosto")],
+            &[("NewHostName", "name\u{0}hidden")],
         )
         .unwrap_err();
 
-        assert!(matches!(errore, FrixError::Validation(_)), "{errore:?}");
+        assert!(matches!(error, FrixError::Validation(_)), "{error:?}");
     }
 
     #[test]
-    fn envelope_rifiuta_un_nome_di_argomento_che_non_e_un_nome_xml() {
-        let errore = build_envelope(
+    fn envelope_rejects_an_argument_name_that_is_not_an_xml_name() {
+        let error = build_envelope(
             "urn:dslforum-org:service:Hosts:1",
             "GetSpecificHostEntry",
             &[("NewMACAddress><x", "1")],
         )
         .unwrap_err();
 
-        assert!(matches!(errore, FrixError::Validation(_)), "{errore:?}");
+        assert!(matches!(error, FrixError::Validation(_)), "{error:?}");
     }
 }

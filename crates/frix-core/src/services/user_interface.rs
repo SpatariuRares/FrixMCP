@@ -1,18 +1,18 @@
-//! `UserInterface:1`: aggiornamenti di FRITZ!OS (docs/PROJECT.md §4.2.16).
+//! `UserInterface:1`: FRITZ!OS updates (docs/PROJECT.md §4.2.16).
 
 use crate::error::FrixError;
 use crate::tr064::Tr064Client;
 
 const SERVICE: &str = "UserInterface:1";
 
-/// Stato dell'aggiornamento di FRITZ!OS.
+/// FRITZ!OS update status.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UpdateInfo {
     /// `NewUpgradeAvailable`.
     pub available: bool,
-    /// `NewX_AVM-DE_Version`: versione disponibile (vuota se non c'è).
+    /// `NewX_AVM-DE_Version`: available version (empty if none).
     pub version: String,
-    /// `NewX_AVM-DE_UpdateState`, così come lo riporta il router.
+    /// `NewX_AVM-DE_UpdateState`, as reported by the router.
     pub state: String,
     /// `NewX_AVM-DE_InfoURL`.
     pub info_url: String,
@@ -29,18 +29,18 @@ pub async fn update_info(client: &Tr064Client) -> Result<UpdateInfo, FrixError> 
     })
 }
 
-/// Aggiornamenti automatici di FRITZ!OS e risultato dell'ultimo aggiornamento.
+/// FRITZ!OS automatic updates and the result of the last update.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AutoUpdate {
     /// `NewX_AVM-DE_AutoUpdateMode` (`off`, `all`, `important`, `check`, …).
     pub mode: String,
     /// `NewX_AVM-DE_CurrentFwVersion`.
     pub current_firmware_version: String,
-    /// `NewX_AVM-DE_LastFwVersion`: versione prima dell'ultimo aggiornamento.
+    /// `NewX_AVM-DE_LastFwVersion`: version before the last update.
     pub last_firmware_version: String,
-    /// `NewX_AVM-DE_UpdateTime`: quando è avvenuto l'ultimo aggiornamento.
+    /// `NewX_AVM-DE_UpdateTime`: when the last update happened.
     pub last_update_time: String,
-    /// `NewX_AVM-DE_UpdateSuccessful`, così come lo riporta il router.
+    /// `NewX_AVM-DE_UpdateSuccessful`, as reported by the router.
     pub last_update_result: String,
 }
 

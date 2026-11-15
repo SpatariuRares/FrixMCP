@@ -1,11 +1,12 @@
-//! Avvio sul router vero (docs/PROJECT.md §6.3): trasporto reale, discovery in chiaro,
-//! porta HTTPS da `GetSecurityPort`, poi Router Account e diritti con
-//! `LANConfigSecurity:X_AVM-DE_GetCurrentUser`, da scrivere su stderr.
+//! Startup on the real router (docs/PROJECT.md §6.3): real transport, plaintext discovery,
+//! HTTPS port from `GetSecurityPort`, then Router Account and rights with
+//! `LANConfigSecurity:X_AVM-DE_GetCurrentUser`, to be written on stderr.
 
 use std::fmt::Write as _;
 use std::sync::Arc;
 
 use frix_core::FrixError;
+use frix_core::language::Language;
 use frix_core::services::lan_config_security::CurrentUser;
 use frix_core::services::{device_info, lan_config_security};
 use frix_core::tr064::Tr064Client;
@@ -13,16 +14,16 @@ use frix_core::transport::{Credentials, RouterSettings, RouterTransport};
 
 use crate::FrixServer;
 
-/// Server pronto a servire MCP, con il Router Account con cui è entrato.
+/// Server ready to serve MCP, with the Router Account it logged in with.
 #[derive(Debug)]
 pub struct Started {
-    /// Il server MCP sopra il trasporto reale.
+    /// The MCP server on top of the real transport.
     pub server: FrixServer,
-    /// Router Account e diritti letti all'avvio.
+    /// Router Account and rights read at startup.
     pub user: CurrentUser,
 }
 
-/// Collega `frix-mcp` al router: nessun tool parte finché questo non riesce.
+/// Connects `frix-mcp` to the router: no tool runs until this succeeds.
 pub async fn connect(
     settings: RouterSettings,
     credentials: Credentials,
@@ -37,15 +38,20 @@ pub async fn connect(
     })
 }
 
-/// Riga per stderr: con quale Router Account e con quali diritti `frix-mcp` è entrato.
+/// Line for stderr, in `language`: which Router Account and which rights `frix-mcp`
+/// logged in with. Right names and access levels are the router's, not translated.
 #[must_use]
-pub fn banner(user: &CurrentUser) -> String {
-    let mut riga = format!("frix-mcp: Router Account: {}; diritti:", user.username);
+pub fn banner(user: &CurrentUser, language: Language) -> String {
+    let (rights, none) = match language {
+        Language::En => ("rights", "none"),
+        Language::It => ("diritti", "nessuno"),
+    };
+    let mut line = format!("frix-mcp: Router Account: {}; {rights}:", user.username);
     if user.rights.is_empty() {
-        riga.push_str(" nessuno");
+        let _ = write!(line, " {none}");
     }
-    for diritto in &user.rights {
-        let _ = write!(riga, " {}={}", diritto.area, diritto.access);
+    for right in &user.rights {
+        let _ = write!(line, " {}={}", right.area, right.access);
     }
-    riga
+    line
 }

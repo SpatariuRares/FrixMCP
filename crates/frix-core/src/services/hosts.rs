@@ -1,7 +1,7 @@
-//! `Hosts:1`: lista host e topologia mesh (docs/PROJECT.md §4.2.2).
+//! `Hosts:1`: host list and mesh topology (docs/PROJECT.md §4.2.2).
 //!
-//! Gli Host si identificano per MAC (ADR 0002): [`find`] e [`resolve_ip`] partono
-//! sempre dal MAC e leggono la lista host al momento della chiamata.
+//! Hosts are identified by MAC (ADR 0002): [`find`] and [`resolve_ip`] always start
+//! from the MAC and read the host list at call time.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::net::Ipv4Addr;
@@ -15,32 +15,32 @@ use crate::tr064::{Tr064Client, xml_list_items};
 
 const SERVICE: &str = "Hosts:1";
 
-/// Tutti gli Host noti al router, nell'ordine della lista.
+/// All Hosts known to the router, in list order.
 ///
-/// Prima `X_AVM-DE_GetHostListPath` e `GET` della lista (una sola chiamata, tutti i
-/// campi); se fallisce, `GetHostNumberOfEntries` e `GetGenericHostEntry` per indice
-/// (§8.1), che danno solo i campi base. Se falliscono entrambe, l'errore è quello
-/// della lista.
+/// First `X_AVM-DE_GetHostListPath` and a `GET` of the list (a single call, all
+/// fields); if that fails, `GetHostNumberOfEntries` and `GetGenericHostEntry` by index
+/// (§8.1), which give only the base fields. If both fail, the error is the
+/// list's.
 pub async fn list(client: &Tr064Client) -> Result<Vec<Host>, FrixError> {
-    match list_da_path(client).await {
+    match list_from_path(client).await {
         Ok(hosts) => Ok(hosts),
-        Err(errore) => list_per_indice(client).await.map_err(|_| errore),
+        Err(error) => list_by_index(client).await.map_err(|_| error),
     }
 }
 
-async fn list_da_path(client: &Tr064Client) -> Result<Vec<Host>, FrixError> {
+async fn list_from_path(client: &Tr064Client) -> Result<Vec<Host>, FrixError> {
     let r = client
         .call(SERVICE, "X_AVM-DE_GetHostListPath", &[])
         .await?;
-    let documento = list_path::download(client, r.text("NewX_AVM-DE_HostListPath")?).await?;
-    xml_list_items(&documento, "Item")?
+    let document = list_path::download(client, r.text("NewX_AVM-DE_HostListPath")?).await?;
+    xml_list_items(&document, "Item")?
         .iter()
         .map(host)
         .collect()
 }
 
-/// I campi di `GetGenericHostEntry`, con gli stessi nomi delle voci della lista host.
-const CAMPI_GENERIC_HOST_ENTRY: [&str; 6] = [
+/// The fields of `GetGenericHostEntry`, with the same names as the host list entries.
+const GENERIC_HOST_ENTRY_FIELDS: [&str; 6] = [
     "IPAddress",
     "AddressSource",
     "MACAddress",
@@ -49,114 +49,114 @@ const CAMPI_GENERIC_HOST_ENTRY: [&str; 6] = [
     "HostName",
 ];
 
-async fn list_per_indice(client: &Tr064Client) -> Result<Vec<Host>, FrixError> {
-    let numero: u16 = client
+async fn list_by_index(client: &Tr064Client) -> Result<Vec<Host>, FrixError> {
+    let count: u16 = client
         .call(SERVICE, "GetHostNumberOfEntries", &[])
         .await?
         .parse("NewHostNumberOfEntries")?;
-    let mut hosts = Vec::with_capacity(usize::from(numero));
-    for indice in 0..numero {
+    let mut hosts = Vec::with_capacity(usize::from(count));
+    for index in 0..count {
         let r = client
             .call(
                 SERVICE,
                 "GetGenericHostEntry",
-                &[("NewIndex", &indice.to_string())],
+                &[("NewIndex", &index.to_string())],
             )
             .await?;
-        let mut voce = BTreeMap::new();
-        for campo in CAMPI_GENERIC_HOST_ENTRY {
-            voce.insert(campo.to_owned(), r.text(&format!("New{campo}"))?.to_owned());
+        let mut entry = BTreeMap::new();
+        for field in GENERIC_HOST_ENTRY_FIELDS {
+            entry.insert(field.to_owned(), r.text(&format!("New{field}"))?.to_owned());
         }
-        hosts.push(host(&voce)?);
+        hosts.push(host(&entry)?);
     }
     Ok(hosts)
 }
 
-/// La topologia mesh (`X_AVM-DE_GetMeshListPath`, poi `GET` del JSON, schema v8.7).
+/// The mesh topology (`X_AVM-DE_GetMeshListPath`, then a `GET` of the JSON, schema v8.7).
 ///
-/// Il formato reale del JSON è da verificare sul router (docs/PROJECT.md §14.3): i
-/// campi assenti valgono vuoto o zero, quelli sconosciuti si ignorano.
+/// The real JSON format is to be verified on the router (docs/PROJECT.md §14.3):
+/// missing fields default to empty or zero, unknown ones are ignored.
 pub async fn mesh(client: &Tr064Client) -> Result<MeshTopology, FrixError> {
     let r = client
         .call(SERVICE, "X_AVM-DE_GetMeshListPath", &[])
         .await?;
-    let documento = list_path::download(client, r.text("NewX_AVM-DE_MeshListPath")?).await?;
-    let grezzo: MeshJson = serde_json::from_str(&documento)
-        .map_err(|e| FrixError::Parse(format!("topologia mesh non interpretabile: {e}")))?;
-    Ok(topologia(&grezzo))
+    let document = list_path::download(client, r.text("NewX_AVM-DE_MeshListPath")?).await?;
+    let raw: MeshJson = serde_json::from_str(&document)
+        .map_err(|e| FrixError::Parse(format!("unparsable mesh topology: {e}")))?;
+    Ok(topology(&raw))
 }
 
-/// L'Host con questo MAC, letto ora dalla lista host.
+/// The Host with this MAC, read now from the host list.
 ///
-/// Errore [`FrixError::NoSuchEntry`] se il router non conosce il MAC.
+/// Error [`FrixError::NoSuchEntry`] if the router does not know the MAC.
 pub async fn find(client: &Tr064Client, mac: Mac) -> Result<Host, FrixError> {
     list(client)
         .await?
         .into_iter()
         .find(|h| h.mac == mac)
-        .ok_or_else(|| sconosciuto(mac))
+        .ok_or_else(|| unknown_mac(mac))
 }
 
-/// Risolve MAC → IP al momento della chiamata, per le azioni del router che lavorano
-/// per IP (ADR 0002).
+/// Resolves MAC → IP at call time, for router actions that work by IP
+/// (ADR 0002).
 ///
-/// Errori:
-/// - [`FrixError::NoSuchEntry`] se il MAC non è nella lista host o non ha un IPv4;
-/// - [`FrixError::Validation`] se lo stesso IP è ora di un'altra voce attiva: l'IP
-///   indicherebbe un altro Host, quindi non si usa.
+/// Errors:
+/// - [`FrixError::NoSuchEntry`] if the MAC is not in the host list or has no IPv4;
+/// - [`FrixError::Validation`] if the same IP now belongs to another active entry: the IP
+///   would point to another Host, so it is not used.
 pub async fn resolve_ip(client: &Tr064Client, mac: Mac) -> Result<Ipv4Addr, FrixError> {
-    ip_di(&list(client).await?, mac)
+    ip_of(&list(client).await?, mac)
 }
 
-fn ip_di(hosts: &[Host], mac: Mac) -> Result<Ipv4Addr, FrixError> {
+fn ip_of(hosts: &[Host], mac: Mac) -> Result<Ipv4Addr, FrixError> {
     let host = hosts
         .iter()
         .find(|h| h.mac == mac)
-        .ok_or_else(|| sconosciuto(mac))?;
+        .ok_or_else(|| unknown_mac(mac))?;
     let ip = host.ip.ok_or_else(|| FrixError::NoSuchEntry {
-        description: format!("l'Host {mac} non ha un indirizzo IPv4"),
+        description: format!("Host {mac} has no IPv4 address"),
     })?;
     if hosts
         .iter()
-        .any(|altro| altro.mac != mac && altro.active && altro.ip == Some(ip))
+        .any(|other| other.mac != mac && other.active && other.ip == Some(ip))
     {
         return Err(FrixError::Validation(format!(
-            "l'IP {ip} dell'Host {mac} è ora assegnato a un altro Host attivo"
+            "IP {ip} of Host {mac} is now assigned to another active Host"
         )));
     }
     Ok(ip)
 }
 
-fn sconosciuto(mac: Mac) -> FrixError {
+fn unknown_mac(mac: Mac) -> FrixError {
     FrixError::NoSuchEntry {
-        description: format!("nessun Host con MAC {mac} nella lista host"),
+        description: format!("no Host with MAC {mac} in the host list"),
     }
 }
 
-/// Una voce `<Item>` della lista host. Campi assenti: testo vuoto, flag falsi, numeri assenti.
-fn host(voce: &BTreeMap<String, String>) -> Result<Host, FrixError> {
-    let testo = |nome: &str| voce.get(nome).map_or("", |t| t.trim()).to_owned();
-    let flag = |nome: &str| voce.get(nome).is_some_and(|t| t.trim() == "1");
-    let numero = |nome: &str| voce.get(nome).and_then(|t| t.trim().parse().ok());
-    let mac = voce
+/// An `<Item>` entry of the host list. Missing fields: empty text, false flags, no numbers.
+fn host(entry: &BTreeMap<String, String>) -> Result<Host, FrixError> {
+    let text = |name: &str| entry.get(name).map_or("", |t| t.trim()).to_owned();
+    let flag = |name: &str| entry.get(name).is_some_and(|t| t.trim() == "1");
+    let number = |name: &str| entry.get(name).and_then(|t| t.trim().parse().ok());
+    let mac = entry
         .get("MACAddress")
-        .ok_or_else(|| FrixError::Parse("voce della lista host senza MACAddress".into()))?
+        .ok_or_else(|| FrixError::Parse("host list entry without MACAddress".into()))?
         .trim()
         .parse()
-        .map_err(|_| FrixError::Parse("MACAddress non valido nella lista host".into()))?;
-    let filter_profile_id = Some(testo("X_AVM-DE_FilterProfileID")).filter(|t| !t.is_empty());
+        .map_err(|_| FrixError::Parse("invalid MACAddress in the host list".into()))?;
+    let filter_profile_id = Some(text("X_AVM-DE_FilterProfileID")).filter(|t| !t.is_empty());
     Ok(Host {
         mac,
-        ip: voce.get("IPAddress").and_then(|t| t.trim().parse().ok()),
-        name: testo("HostName"),
+        ip: entry.get("IPAddress").and_then(|t| t.trim().parse().ok()),
+        name: text("HostName"),
         active: flag("Active"),
-        interface_type: testo("InterfaceType"),
-        address_source: testo("AddressSource"),
-        port: numero("X_AVM-DE_Port"),
-        speed_mbps: numero("X_AVM-DE_Speed"),
+        interface_type: text("InterfaceType"),
+        address_source: text("AddressSource"),
+        port: number("X_AVM-DE_Port"),
+        speed_mbps: number("X_AVM-DE_Speed"),
         guest: flag("X_AVM-DE_Guest"),
         vpn: flag("X_AVM-DE_VPN"),
-        wan_access: testo("X_AVM-DE_WANAccess"),
+        wan_access: text("X_AVM-DE_WANAccess"),
         wan_access_disallowed: flag("X_AVM-DE_Disallow"),
         priority: flag("X_AVM-DE_Priority"),
         filter_profile_id,
@@ -167,24 +167,24 @@ fn host(voce: &BTreeMap<String, String>) -> Result<Host, FrixError> {
 #[derive(Debug, Default, Deserialize)]
 #[serde(default)]
 struct MeshJson {
-    nodes: Vec<NodoJson>,
+    nodes: Vec<NodeJson>,
 }
 
 #[derive(Debug, Default, Deserialize)]
 #[serde(default)]
-struct NodoJson {
+struct NodeJson {
     uid: String,
     device_name: String,
     device_model: String,
     device_mac_address: String,
     mesh_role: String,
     is_meshed: bool,
-    node_interfaces: Vec<InterfacciaJson>,
+    node_interfaces: Vec<InterfaceJson>,
 }
 
 #[derive(Debug, Default, Deserialize)]
 #[serde(default)]
-struct InterfacciaJson {
+struct InterfaceJson {
     uid: String,
     name: String,
     mac_address: String,
@@ -208,23 +208,23 @@ struct LinkJson {
     cur_data_rate_tx: u64,
 }
 
-fn topologia(grezzo: &MeshJson) -> MeshTopology {
-    let interfacce: BTreeMap<&str, &str> = grezzo
+fn topology(raw: &MeshJson) -> MeshTopology {
+    let interfaces: BTreeMap<&str, &str> = raw
         .nodes
         .iter()
         .flat_map(|n| &n.node_interfaces)
         .map(|i| (i.uid.as_str(), i.name.as_str()))
         .collect();
-    let nome_interfaccia = |uid: &str| interfacce.get(uid).copied().unwrap_or("").to_owned();
-    let mut visti = BTreeSet::new();
+    let interface_name = |uid: &str| interfaces.get(uid).copied().unwrap_or("").to_owned();
+    let mut seen = BTreeSet::new();
     let mut links = Vec::new();
-    for link in grezzo
+    for link in raw
         .nodes
         .iter()
         .flat_map(|n| &n.node_interfaces)
         .flat_map(|i| &i.node_links)
     {
-        if !visti.insert(link.uid.as_str()) {
+        if !seen.insert(link.uid.as_str()) {
             continue;
         }
         links.push(MeshLink {
@@ -233,11 +233,11 @@ fn topologia(grezzo: &MeshJson) -> MeshTopology {
             state: link.state.clone(),
             node_1: MeshEnd {
                 node_uid: link.node_1_uid.clone(),
-                interface: nome_interfaccia(&link.node_interface_1_uid),
+                interface: interface_name(&link.node_interface_1_uid),
             },
             node_2: MeshEnd {
                 node_uid: link.node_2_uid.clone(),
-                interface: nome_interfaccia(&link.node_interface_2_uid),
+                interface: interface_name(&link.node_interface_2_uid),
             },
             max_rate_rx_kbps: link.max_data_rate_rx,
             max_rate_tx_kbps: link.max_data_rate_tx,
@@ -245,7 +245,7 @@ fn topologia(grezzo: &MeshJson) -> MeshTopology {
             cur_rate_tx_kbps: link.cur_data_rate_tx,
         });
     }
-    let nodes = grezzo
+    let nodes = raw
         .nodes
         .iter()
         .map(|n| MeshNode {

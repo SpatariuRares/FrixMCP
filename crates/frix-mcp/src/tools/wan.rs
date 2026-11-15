@@ -116,11 +116,11 @@ impl FrixServer {
     #[tool(
         name = "get_dsl_status",
         description = concat!(
-            "Salute della linea DSL del FRITZ!Box: sync rate e rate massimi (kbit/s), margine SNR e attenuazione (dB), errori CRC/FEC/HEC, modulazione e profilo. Su una linea non DSL (vedi access_type) i valori sono vuoti. ",
-            dati_della_rete!()
+            "Health of the FRITZ!Box DSL line: sync rate and maximum rates (kbit/s), SNR margin and attenuation (dB), CRC/FEC/HEC errors, modulation and profile. On a non-DSL line (see access_type) the values are empty. ",
+            network_data!()
         ),
         annotations(
-            title = "Stato della linea DSL",
+            title = "DSL line status",
             read_only_hint = true,
             destructive_hint = false,
             idempotent_hint = true,
@@ -134,11 +134,11 @@ impl FrixServer {
     #[tool(
         name = "get_bandwidth",
         description = concat!(
-            "Traffico Internet del FRITZ!Box: utilizzo corrente in download e upload, serie degli ultimi secondi (upload anche per priorità: realtime, high, default, low) e contatori totali di byte, che ripartono da zero a 4 GiB. ",
-            dati_della_rete!()
+            "FRITZ!Box Internet traffic: current download and upload usage, series of the last seconds (upload also by priority: realtime, high, default, low) and total byte counters, which wrap to zero at 4 GiB. ",
+            network_data!()
         ),
         annotations(
-            title = "Traffico Internet",
+            title = "Internet traffic",
             read_only_hint = true,
             destructive_hint = false,
             idempotent_hint = true,
@@ -152,11 +152,11 @@ impl FrixServer {
     #[tool(
         name = "get_wan_status",
         description = concat!(
-            "Stato della connessione Internet del FRITZ!Box: tipo (PPP o IP, scoperto dal router), connessa o no, IP pubblico, uptime, ultimo errore, DNS e velocità massime del link. ",
-            dati_della_rete!()
+            "State of the FRITZ!Box Internet connection: type (PPP or IP, detected from the router), connected or not, public IP, uptime, last error, DNS and maximum link speeds. ",
+            network_data!()
         ),
         annotations(
-            title = "Stato della connessione Internet",
+            title = "Internet connection status",
             read_only_hint = true,
             destructive_hint = false,
             idempotent_hint = true,
@@ -172,15 +172,15 @@ impl FrixServer {
     async fn dsl_status(&self) -> Result<DslStatus, FrixError> {
         let link = wan_common::link_properties(&self.client).await?;
         let info = wan_dsl::info(&self.client).await?;
-        let linea = wan_dsl::line(&self.client).await?;
+        let dsl_line = wan_dsl::line(&self.client).await?;
         let stats = wan_dsl::statistics(&self.client).await?;
         Ok(DslStatus {
             access_type: link.access_type,
             enabled: info.enabled,
             status: info.status,
-            link_status: linea.link_status,
-            modulation: linea.modulation,
-            profile: linea.profile,
+            link_status: dsl_line.link_status,
+            modulation: dsl_line.modulation,
+            profile: dsl_line.profile,
             data_path: info.data_path,
             downstream: info.downstream.into(),
             upstream: info.upstream.into(),
@@ -208,7 +208,7 @@ impl FrixServer {
             },
             max_downstream_bps: m.max_downstream_bps,
             max_upstream_bps: m.max_upstream_bps,
-            // il primo valore della serie è il campione più recente
+            // the first value of the series is the most recent sample
             current_downstream_bps: m.downstream_bps.first().copied(),
             current_upstream_bps: m.upstream_bps.first().copied(),
             series: Series {

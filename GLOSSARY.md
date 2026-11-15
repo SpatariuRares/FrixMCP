@@ -1,78 +1,78 @@
 # FrixMCP
 
-Server MCP e dashboard locale che permettono a un'IA e a una persona di osservare e governare un FRITZ!Box di casa con lo stesso modello di permessi.
+MCP server and local dashboard that let an AI and a person observe and govern a home FRITZ!Box with the same permission model.
 
-## Persone e identità
+## People and identity
 
 **Operator**:
-La persona umana che usa FrixMCP; è l'unica che può confermare un'operazione Dangerous.
-_Avoid_: utente, user (da solo)
+The human who uses FrixMCP; the only one who can confirm a Dangerous operation.
+_Avoid_: user (on its own)
 
 **Agent**:
-L'IA che usa FrixMCP tramite MCP; può proporre operazioni Dangerous ma mai confermarle.
-_Avoid_: Claude, il modello, mcp (come nome di attore)
+The AI that uses FrixMCP over MCP; it can propose Dangerous operations but never confirm them.
+_Avoid_: Claude, the model, mcp (as the name of an actor)
 
 **Initiator**:
-Chi ha chiesto una scrittura: l'Agent oppure l'Operator.
-_Avoid_: origine, origin, mcp/web
+Whoever requested a write: the Agent or the Operator.
+_Avoid_: origin, mcp/web
 
 **Router Account**:
-L'utente FRITZ!OS con cui FrixMCP si autentica sul router.
-_Avoid_: utente, user (da solo), admin
+The FRITZ!OS user that FrixMCP authenticates as on the router.
+_Avoid_: user (on its own), admin
 
 **Control Host**:
-L'Host su cui girano FrixMCP e la sua dashboard; FrixMCP non deve mai tagliarlo fuori dalla rete.
-_Avoid_: il Mac, macchina locale, localhost
+The Host that runs FrixMCP and its dashboard; FrixMCP must never cut it off the network.
+_Avoid_: the Mac, local machine, localhost
 
-## Rete
+## Network
 
 **Host**:
-Qualunque apparecchio che il router conosce nella sua lista host, inclusi i nodi della mesh; la sua identità è il MAC, mai l'IP.
-_Avoid_: dispositivo, device, client (da soli)
+Any device the router knows in its host list, mesh nodes included; its identity is the MAC, never the IP.
+_Avoid_: device, client (on their own)
 
 **SmartHome Device**:
-Un apparecchio domotico gestito dal router e identificato da un AIN (presa, termostato, sensore).
-_Avoid_: dispositivo, device (da soli)
+A home automation device managed by the router and identified by an AIN (plug, thermostat, sensor).
+_Avoid_: device (on its own)
 
 **Wi-Fi Network**:
-Una delle tre reti Wi-Fi del router: Principale 2,4 GHz, Principale 5 GHz, Ospiti.
-_Avoid_: banda (per indicare una rete), WLAN, istanza
+One of the router's three Wi-Fi networks: Main 2.4 GHz, Main 5 GHz, Guest.
+_Avoid_: band (meaning a network), WLAN, instance
 
 **Band**:
-La frequenza radio su cui trasmette una Wi-Fi Network (2,4 GHz o 5 GHz).
-_Avoid_: rete (per indicare una frequenza)
+The radio frequency a Wi-Fi Network transmits on (2.4 GHz or 5 GHz).
+_Avoid_: network (meaning a frequency)
 
-## Permessi
+## Permissions
 
 **Level**:
-Il grado di rischio di un'operazione esposta: Read, Write o Dangerous.
-_Avoid_: livello X, excluded (non è un Level)
+The risk grade of an exposed operation: Read, Write or Dangerous.
+_Avoid_: level X, excluded (not a Level)
 
 **Classification**:
-La decisione presa per ogni azione del router: esposta con un Level, oppure Forbidden.
+The decision made for each router action: exposed with a Level, or Forbidden.
 
 **Forbidden**:
-Classification di un'azione del router che FrixMCP non può eseguire in nessun caso, perché assente dal programma.
-_Avoid_: excluded, livello X, disabilitata
+Classification of a router action that FrixMCP cannot execute under any circumstances, because it is absent from the program.
+_Avoid_: excluded, level X, disabled
 
 **Confirmation**:
-Il consenso dato dall'Operator a una singola operazione Dangerous, su un canale che l'IA non può leggere né azionare.
-_Avoid_: confirm token, conferma in chat
+The consent the Operator gives to a single Dangerous operation, on a channel the AI can neither read nor operate.
+_Avoid_: confirm token, confirmation in chat
 
 **Preview**:
-La descrizione dell'effetto di una scrittura, calcolata senza eseguirla; è ciò che l'Operator vede prima di una Confirmation.
-_Avoid_: dry run (è il nome del parametro, non del concetto), anteprima, riassunto
+The description of a write's effect, computed without executing it; it is what the Operator sees before a Confirmation.
+_Avoid_: dry run (that is the parameter name, not the concept), summary
 
 **Lockout**:
-La perdita di accesso del Control Host al router che non si risolve da sola; FrixMCP la impedisce sempre, a qualunque Level.
-_Avoid_: disconnessione (un riavvio disconnette ma non è un Lockout)
+The Control Host's loss of access to the router that does not resolve on its own; FrixMCP always prevents it, at any Level.
+_Avoid_: disconnection (a reboot disconnects but is not a Lockout)
 
-## Tracciabilità
+## Traceability
 
 **Audit Entry**:
-La registrazione di una scrittura eseguita: chi l'ha chiesta, cosa, lo stato prima e lo stato dopo.
-_Avoid_: log (il log è quello del router)
+The record of an executed write: who requested it, what, the state before and the state after.
+_Avoid_: log (the log is the router's)
 
 **Reversibility**:
-Proprietà dichiarata di ogni operazione di scrittura: Reversible se riapplicare lo stato precedente ne annulla l'effetto, Irreversible altrimenti.
+Declared property of every write operation: Reversible if reapplying the previous state undoes its effect, Irreversible otherwise.
 _Avoid_: rollback, undo

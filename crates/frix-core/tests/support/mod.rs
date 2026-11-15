@@ -1,7 +1,7 @@
-//! Router finto su 127.0.0.1 per i test del trasporto reale: HTTP in chiaro e HTTPS
-//! con un certificato di test. Non contatta mai il router vero.
+//! Fake router on 127.0.0.1 for the real transport tests: plain HTTP and HTTPS with
+//! a test certificate. Never contacts the real router.
 //!
-//! Usato anche dai test di `frix-mcp` con `#[path = …]`.
+//! Also used by the `frix-mcp` tests with `#[path = …]`.
 #![allow(
     dead_code,
     clippy::unwrap_used,
@@ -22,10 +22,10 @@ use std::thread;
 use md5::{Digest as _, Md5};
 use rustls::pki_types::{CertificateDer, PrivateKeyDer, PrivatePkcs8KeyDer};
 
-/// Una richiesta ricevuta dal router finto.
+/// A request received by the fake router.
 #[derive(Debug, Clone)]
-pub struct Ricevuta {
-    /// Arrivata su HTTPS.
+pub struct ReceivedRequest {
+    /// Arrived over HTTPS.
     pub tls: bool,
     pub method: String,
     pub path: String,
@@ -33,45 +33,45 @@ pub struct Ricevuta {
     pub body: String,
 }
 
-impl Ricevuta {
-    /// Valore di un header (nome senza distinzione di maiuscole).
-    pub fn header(&self, nome: &str) -> Option<&str> {
+impl ReceivedRequest {
+    /// Value of a header (case-insensitive name).
+    pub fn header(&self, name: &str) -> Option<&str> {
         self.headers
             .iter()
-            .find(|(n, _)| n.eq_ignore_ascii_case(nome))
+            .find(|(n, _)| n.eq_ignore_ascii_case(name))
             .map(|(_, v)| v.as_str())
     }
 }
 
-/// Risposta del router finto: stato, header aggiuntivi, corpo.
-pub type Risposta = (u16, Vec<(String, String)>, String);
+/// Response of the fake router: status, extra headers, body.
+pub type Response = (u16, Vec<(String, String)>, String);
 
-/// Gestore delle richieste.
-pub type Gestore = Arc<dyn Fn(&Ricevuta) -> Risposta + Send + Sync>;
+/// Request handler.
+pub type Handler = Arc<dyn Fn(&ReceivedRequest) -> Response + Send + Sync>;
 
-/// Router finto in ascolto su due porte locali.
+/// Fake router listening on two local ports.
 #[derive(Debug, Clone)]
-pub struct RouterFinto {
+pub struct FakeRouter {
     pub http_port: u16,
     pub https_port: u16,
-    pub ricevute: Arc<Mutex<Vec<Ricevuta>>>,
+    pub received: Arc<Mutex<Vec<ReceivedRequest>>>,
 }
 
-impl RouterFinto {
-    pub fn avvia(gestore: Gestore) -> Self {
-        let ricevute = Arc::new(Mutex::new(Vec::new()));
+impl FakeRouter {
+    pub fn start(handler: Handler) -> Self {
+        let received = Arc::new(Mutex::new(Vec::new()));
         let http = TcpListener::bind("127.0.0.1:0").unwrap();
         let https = TcpListener::bind("127.0.0.1:0").unwrap();
         let router = Self {
             http_port: http.local_addr().unwrap().port(),
             https_port: https.local_addr().unwrap().port(),
-            ricevute: Arc::clone(&ricevute),
+            received: Arc::clone(&received),
         };
 
-        let (g, r) = (Arc::clone(&gestore), Arc::clone(&ricevute));
+        let (h, r) = (Arc::clone(&handler), Arc::clone(&received));
         thread::spawn(move || {
             for stream in http.incoming().flatten() {
-                servi(stream, false, &g, &r);
+                serve(stream, false, &h, &r);
             }
         });
         let config = Arc::new(server_config());
@@ -79,20 +79,20 @@ impl RouterFinto {
             for stream in https.incoming().flatten() {
                 let conn = rustls::ServerConnection::new(Arc::clone(&config)).unwrap();
                 let tls = rustls::StreamOwned::new(conn, stream);
-                servi(tls, true, &gestore, &ricevute);
+                serve(tls, true, &handler, &received);
             }
         });
         router
     }
 
-    pub fn ricevute(&self) -> Vec<Ricevuta> {
-        self.ricevute.lock().unwrap().clone()
+    pub fn received(&self) -> Vec<ReceivedRequest> {
+        self.received.lock().unwrap().clone()
     }
 }
 
 fn server_config() -> rustls::ServerConfig {
-    let cert = CertificateDer::from(da_hex(cert::CERT_HEX));
-    let key = PrivateKeyDer::Pkcs8(PrivatePkcs8KeyDer::from(da_hex(cert::KEY_HEX)));
+    let cert = CertificateDer::from(from_hex(cert::CERT_HEX));
+    let key = PrivateKeyDer::Pkcs8(PrivatePkcs8KeyDer::from(from_hex(cert::KEY_HEX)));
     rustls::ServerConfig::builder_with_provider(Arc::new(rustls::crypto::ring::default_provider()))
         .with_safe_default_protocol_versions()
         .unwrap()
@@ -101,102 +101,102 @@ fn server_config() -> rustls::ServerConfig {
         .unwrap()
 }
 
-/// Byte del certificato di test (DER).
+/// Bytes of the test certificate (DER).
 pub fn cert_der() -> Vec<u8> {
-    da_hex(cert::CERT_HEX)
+    from_hex(cert::CERT_HEX)
 }
 
-fn da_hex(righe: &[&str]) -> Vec<u8> {
-    let testo: String = righe.concat();
-    (0..testo.len())
+fn from_hex(lines: &[&str]) -> Vec<u8> {
+    let text: String = lines.concat();
+    (0..text.len())
         .step_by(2)
-        .map(|i| u8::from_str_radix(&testo[i..i + 2], 16).unwrap())
+        .map(|i| u8::from_str_radix(&text[i..i + 2], 16).unwrap())
         .collect()
 }
 
-/// Una richiesta per connessione, poi `Connection: close`. Un handshake fallito chiude e basta.
-fn servi<S: Read + Write>(
+/// One request per connection, then `Connection: close`. A failed handshake just closes.
+fn serve<S: Read + Write>(
     stream: S,
     tls: bool,
-    gestore: &Gestore,
-    registro: &Arc<Mutex<Vec<Ricevuta>>>,
+    handler: &Handler,
+    log: &Arc<Mutex<Vec<ReceivedRequest>>>,
 ) {
-    let mut lettore = BufReader::new(stream);
-    let mut prima = String::new();
-    if lettore.read_line(&mut prima).unwrap_or(0) == 0 {
+    let mut reader = BufReader::new(stream);
+    let mut first = String::new();
+    if reader.read_line(&mut first).unwrap_or(0) == 0 {
         return;
     }
-    let mut parti = prima.split_whitespace();
-    let method = parti.next().unwrap_or_default().to_owned();
-    let path = parti.next().unwrap_or_default().to_owned();
+    let mut parts = first.split_whitespace();
+    let method = parts.next().unwrap_or_default().to_owned();
+    let path = parts.next().unwrap_or_default().to_owned();
     let mut headers = Vec::new();
     loop {
-        let mut riga = String::new();
-        if lettore.read_line(&mut riga).unwrap_or(0) == 0 {
+        let mut line = String::new();
+        if reader.read_line(&mut line).unwrap_or(0) == 0 {
             return;
         }
-        let riga = riga.trim_end();
-        if riga.is_empty() {
+        let line = line.trim_end();
+        if line.is_empty() {
             break;
         }
-        if let Some((n, v)) = riga.split_once(':') {
+        if let Some((n, v)) = line.split_once(':') {
             headers.push((n.trim().to_owned(), v.trim().to_owned()));
         }
     }
-    let lunghezza: usize = headers
+    let length: usize = headers
         .iter()
         .find(|(n, _)| n.eq_ignore_ascii_case("content-length"))
         .map_or(0, |(_, v)| v.parse().unwrap());
-    let mut corpo = vec![0; lunghezza];
-    if lettore.read_exact(&mut corpo).is_err() {
+    let mut body = vec![0; length];
+    if reader.read_exact(&mut body).is_err() {
         return;
     }
-    let ricevuta = Ricevuta {
+    let request = ReceivedRequest {
         tls,
         method,
         path,
         headers,
-        body: String::from_utf8(corpo).unwrap(),
+        body: String::from_utf8(body).unwrap(),
     };
-    registro.lock().unwrap().push(ricevuta.clone());
-    let (stato, extra, corpo) = gestore(&ricevuta);
-    let mut risposta = format!(
-        "HTTP/1.1 {stato} X\r\nContent-Length: {}\r\nConnection: close\r\n",
-        corpo.len()
+    log.lock().unwrap().push(request.clone());
+    let (status, extra, body) = handler(&request);
+    let mut response = format!(
+        "HTTP/1.1 {status} X\r\nContent-Length: {}\r\nConnection: close\r\n",
+        body.len()
     );
     for (n, v) in extra {
-        let _ = write!(risposta, "{n}: {v}\r\n");
+        let _ = write!(response, "{n}: {v}\r\n");
     }
-    risposta.push_str("\r\n");
-    risposta.push_str(&corpo);
-    let stream = lettore.get_mut();
-    let _ = stream.write_all(risposta.as_bytes());
+    response.push_str("\r\n");
+    response.push_str(&body);
+    let stream = reader.get_mut();
+    let _ = stream.write_all(response.as_bytes());
     let _ = stream.flush();
 }
 
-/// Sfida Digest del router finto (parametri tipici: `qop=auth`, MD5).
+/// Digest challenge of the fake router (typical parameters: `qop=auth`, MD5).
 pub const REALM: &str = "F!Box SOAP-Auth";
 pub const NONCE: &str = "4F1C5B3A2D9E8F70";
 
-pub fn sfida() -> (String, String) {
+pub fn challenge() -> (String, String) {
     (
         "WWW-Authenticate".to_owned(),
         format!(r#"Digest realm="{REALM}", nonce="{NONCE}", algorithm=MD5, qop="auth""#),
     )
 }
 
-/// Verifica indipendente di un header `Authorization: Digest` (`qop=auth`, MD5).
-pub fn digest_valido(ricevuta: &Ricevuta, utente: &str, password: &str) -> bool {
-    let Some(header) = ricevuta.header("authorization") else {
+/// Independent check of an `Authorization: Digest` header (`qop=auth`, MD5).
+pub fn valid_digest(request: &ReceivedRequest, user: &str, password: &str) -> bool {
+    let Some(header) = request.header("authorization") else {
         return false;
     };
-    let Some(parametri) = header.strip_prefix("Digest ") else {
+    let Some(params) = header.strip_prefix("Digest ") else {
         return false;
     };
-    let campo = |nome: &str| -> String {
-        parametri
+    let field = |name: &str| -> String {
+        params
             .split(", ")
-            .find_map(|p| p.strip_prefix(&format!("{nome}=")))
+            .find_map(|p| p.strip_prefix(&format!("{name}=")))
             .unwrap_or_default()
             .trim_matches('"')
             .to_owned()
@@ -209,16 +209,16 @@ pub fn digest_valido(ricevuta: &Ricevuta, utente: &str, password: &str) -> bool 
                 acc
             })
     };
-    let ha1 = md5(format!("{utente}:{REALM}:{password}"));
-    let ha2 = md5(format!("{}:{}", ricevuta.method, campo("uri")));
-    let atteso = md5(format!(
+    let ha1 = md5(format!("{user}:{REALM}:{password}"));
+    let ha2 = md5(format!("{}:{}", request.method, field("uri")));
+    let expected = md5(format!(
         "{ha1}:{}:{}:{}:auth:{ha2}",
-        campo("nonce"),
-        campo("nc"),
-        campo("cnonce")
+        field("nonce"),
+        field("nc"),
+        field("cnonce")
     ));
-    campo("username") == utente
-        && campo("uri") == ricevuta.path
-        && campo("nonce") == NONCE
-        && campo("response") == atteso
+    field("username") == user
+        && field("uri") == request.path
+        && field("nonce") == NONCE
+        && field("response") == expected
 }

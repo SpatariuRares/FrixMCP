@@ -1,10 +1,10 @@
-//! Test live contro il router reale (docs/PROJECT.md §6.6, ticket #8).
+//! Live test against the real router (docs/PROJECT.md §6.6, ticket #8).
 //!
-//! Compilato solo con la feature `live` e comunque `#[ignore]`: non gira in CI né con
-//! `cargo test`. Legge config (`~/.config/frixmcp/config.toml`, o i flag in
-//! `FRIXMCP_LIVE_ARGS`) e password dal Keychain, ed esegue solo letture: le
-//! [`xtask::letture::LETTURE`] attraverso la Policy e un registratore che rifiuta
-//! ogni azione non di Level Read. Non scrive nessun file.
+//! Compiled only with the `live` feature and `#[ignore]` anyway: it does not run in CI or
+//! with `cargo test`. It reads the config (`~/.config/frixmcp/config.toml`, or the flags in
+//! `FRIXMCP_LIVE_ARGS`) and the password from the Keychain, and only reads: the
+//! [`xtask::reads::READS`] through the Policy and a recorder that rejects
+//! every action that is not Level Read. It writes no file.
 //!
 //! ```text
 //! cargo test -p xtask --features live --test live -- --ignored --nocapture
@@ -14,39 +14,32 @@
 
 use frix_core::policy::{Classification, Level, classification};
 use frix_core::transport::Method;
-use xtask::registra::registra_dal_router;
+use xtask::record::record_from_router;
 
 #[tokio::test]
-#[ignore = "router reale: cargo test -p xtask --features live --test live -- --ignored"]
-async fn le_letture_dei_tool_funzionano_sul_router_reale() {
+#[ignore = "real router: cargo test -p xtask --features live --test live -- --ignored"]
+async fn tool_reads_work_on_the_real_router() {
     let args: Vec<String> = std::env::var("FRIXMCP_LIVE_ARGS")
         .unwrap_or_default()
         .split_whitespace()
         .map(str::to_owned)
         .collect();
 
-    let registrazione = registra_dal_router(args)
+    let recording = record_from_router(args)
         .await
-        .unwrap_or_else(|e| panic!("collegamento al router: {e}"));
+        .unwrap_or_else(|e| panic!("connecting to the router: {e}"));
 
-    let fallite: Vec<String> = registrazione
-        .esiti
+    let failed: Vec<String> = recording
+        .outcomes
         .iter()
-        .filter_map(|e| e.errore.as_ref().map(|m| format!("{}: {m}", e.tool)))
+        .filter_map(|o| o.error.as_ref().map(|m| format!("{}: {m}", o.tool)))
         .collect();
-    assert!(
-        fallite.is_empty(),
-        "letture fallite:\n{}",
-        fallite.join("\n")
-    );
-    for scambio in &registrazione.scambi {
-        if scambio.richiesta.method != Method::Post {
+    assert!(failed.is_empty(), "failed reads:\n{}", failed.join("\n"));
+    for exchange in &recording.exchanges {
+        if exchange.request.method != Method::Post {
             continue;
         }
-        let (service, action) = scambio
-            .richiesta
-            .soap_service_action()
-            .expect("azione SOAP");
+        let (service, action) = exchange.request.soap_service_action().expect("SOAP action");
         assert_eq!(
             classification(service, action),
             Some(Classification::Exposed(Level::Read)),

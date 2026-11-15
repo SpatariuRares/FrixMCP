@@ -1,9 +1,9 @@
-//! `Connector` di ureq che avvolge la connessione TCP in rustls con il `ClientConfig`
-//! di [`super::tls`] (pin o CA). ureq è compilato senza TLS proprio: questo è l'unico
-//! modo in cui una richiesta `https` può partire, e ureq rifiuta una richiesta `https`
-//! su un trasporto che non è TLS.
+//! ureq `Connector` that wraps the TCP connection in rustls with the `ClientConfig`
+//! from [`super::tls`] (pin or CA). ureq is compiled without its own TLS: this is the
+//! only way an `https` request can go out, and ureq refuses an `https` request on a
+//! transport that is not TLS.
 //!
-//! Ricalca `RustlsConnector` di ureq 3.5 (API `unversioned`).
+//! Modeled on ureq 3.5's `RustlsConnector` (`unversioned` API).
 
 use std::fmt;
 use std::io::{Read as _, Write as _};
@@ -16,7 +16,7 @@ use ureq::unversioned::transport::{
     TransportAdapter,
 };
 
-/// Avvolge in TLS le connessioni verso URL `https`; lascia passare le altre.
+/// Wraps connections to `https` URLs in TLS; lets the others through.
 pub(super) struct RustlsConnector {
     config: Arc<ClientConfig>,
     server_name: ServerName<'static>,
@@ -68,7 +68,7 @@ impl<In: Transport> Connector<In> for RustlsConnector {
     }
 }
 
-/// Connessione TLS già stabilita.
+/// An established TLS connection.
 pub(super) struct TlsTransport {
     buffers: LazyBuffers,
     stream: StreamOwned<ClientConnection, TransportAdapter>,
@@ -88,9 +88,7 @@ impl Transport for TlsTransport {
     fn transmit_output(&mut self, amount: usize, timeout: NextTimeout) -> Result<(), ureq::Error> {
         self.stream.get_mut().set_timeout(timeout);
         let output = self.buffers.output().get(..amount).ok_or_else(|| {
-            ureq::Error::Io(std::io::Error::other(
-                "buffer di uscita più corto del previsto",
-            ))
+            ureq::Error::Io(std::io::Error::other("output buffer shorter than expected"))
         })?;
         self.stream.write_all(output)?;
         Ok(())

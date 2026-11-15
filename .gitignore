@@ -1,9 +1,9 @@
 /target
 **/*.rs.bk
-# segreti e configurazione locale: mai nel repo
+# secrets and local configuration: never in the repo
 .mcp.json
 config.toml
-# eccezione: l'alias `cargo xtask` (nessun segreto)
+# exception: the `cargo xtask` alias (no secrets)
 !/.cargo/config.toml
 *.der
 *.pem
@@ -12,12 +12,12 @@ config.toml
 *.p12
 *.env
 .env*
-# audit e dati locali
+# audit and local data
 audit.jsonl
 *.jsonl
-# fixture non oscurate (il comando record scrive qui prima dell'oscuramento)
+# unredacted fixtures (the record command writes here before redaction)
 crates/frix-core/tests/fixtures/raw/
-# evidence della sessione craft-anything
+# evidence from the craft-anything session
 analysis/
 # macOS / editor
 .DS_Store

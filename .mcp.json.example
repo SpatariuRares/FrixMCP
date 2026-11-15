@@ -1,10 +1,10 @@
 {
   "mcpServers": {
     "frix": {
-      "command": "/Users/<utente>/.local/bin/frix-mcp",
+      "command": "/Users/<you>/.local/bin/frix-mcp",
       "args": [
         "--config",
-        "/Users/<utente>/.config/frixmcp/config.toml"
+        "/Users/<you>/.config/frixmcp/config.toml"
       ]
     }
   }

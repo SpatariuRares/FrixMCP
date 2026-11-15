@@ -1,11 +1,11 @@
-//! I 15 tool della §8.1 sulle risposte reali oscurate del 7590 (`fixtures/reali/`,
-//! registrate con `cargo xtask record`; issue #15).
+//! The 15 tools of §8.1 on the redacted real responses of the 7590 (`fixtures/real/`,
+//! recorded with `cargo xtask record`; issue #15).
 //!
-//! Gli altri test usano fixture scritte a mano per coprire casi che questo router non
-//! produce (linea DSL, connessione IP, `SmartHome` Device, wrap dei contatori). Qui si
-//! verifica che le risposte vere si interpretino, e i fatti osservati sul router
-//! (docs/PROJECT.md §14.3): connessione PPP su Ethernet, istanza 3 = Ospiti con
-//! `X_AVM-DE_FrequencyBand` `unknown`, nessun `SmartHome` Device.
+//! The other tests use hand-written fixtures to cover cases this router does not
+//! produce (DSL line, IP connection, `SmartHome` Devices, counter wrap). Here we
+//! check that the real responses are interpreted, and the facts observed on the router
+//! (docs/PROJECT.md §14.3): PPP connection over Ethernet, instance 3 = guest network with
+//! `X_AVM-DE_FrequencyBand` `unknown`, no `SmartHome` Device.
 #![allow(
     clippy::unwrap_used,
     clippy::expect_used,
@@ -18,10 +18,10 @@ mod common;
 use frix_core::transport::FixtureTransport;
 use serde_json::{Value, json};
 
-/// Il 7590 senza `SmartHome` Device risponde HTTP 500 con il fault 713 già all'indice 0
-/// (osservato con `cargo xtask record`, che scarta i fault).
+/// The 7590 without `SmartHome` Devices answers HTTP 500 with fault 713 already at index 0
+/// (observed with `cargo xtask record`, which discards faults).
 fn transport() -> FixtureTransport {
-    common::transport_reale().with_soap_args(
+    common::transport_real().with_soap_args(
         "X_AVM-DE_Homeauto:1",
         "GetGenericDeviceInfos",
         &[("NewIndex", "0")],
@@ -29,36 +29,36 @@ fn transport() -> FixtureTransport {
     )
 }
 
-async fn dati(tool: &str, argomenti: Value) -> Value {
-    let mcp = common::avvia(transport()).await;
-    let esito = common::chiama(&mcp, tool, argomenti).await;
-    assert!(!common::is_errore(&esito), "{tool}: {esito:?}");
-    common::dati(&esito)
+async fn tool_data(tool: &str, arguments: Value) -> Value {
+    let mcp = common::start(transport()).await;
+    let outcome = common::call(&mcp, tool, arguments).await;
+    assert!(!common::is_error(&outcome), "{tool}: {outcome:?}");
+    common::data(&outcome)
 }
 
-fn host_attivo(hosts: &Value) -> String {
+fn active_host(hosts: &Value) -> String {
     hosts["hosts"]
         .as_array()
         .unwrap()
         .iter()
         .find(|h| h["active"] == true)
         .map(|h| h["mac"].as_str().unwrap().to_owned())
-        .expect("almeno un Host attivo")
+        .expect("at least one active Host")
 }
 
 #[tokio::test]
-async fn tools_list_ha_solo_i_15_tool_di_lettura() {
-    let mcp = common::avvia(transport()).await;
-    let mut nomi: Vec<String> = mcp
+async fn tools_list_has_only_the_15_read_tools() {
+    let mcp = common::start(transport()).await;
+    let mut names: Vec<String> = mcp
         .list_all_tools()
         .await
         .unwrap()
         .into_iter()
         .map(|t| t.name.to_string())
         .collect();
-    nomi.sort();
+    names.sort();
     assert_eq!(
-        nomi,
+        names,
         [
             "get_access_control",
             "get_bandwidth",
@@ -80,8 +80,8 @@ async fn tools_list_ha_solo_i_15_tool_di_lettura() {
 }
 
 #[tokio::test]
-async fn get_system_info_riporta_modello_e_router_account() {
-    let d = dati("get_system_info", json!({})).await;
+async fn get_system_info_reports_model_and_router_account() {
+    let d = tool_data("get_system_info", json!({})).await;
     assert_eq!(d["model"], "FRITZ!Box 7590");
     assert_eq!(d["firmware_version"], "154.08.25");
     assert_eq!(d["current_user"]["username"], "frixmcp");
@@ -90,13 +90,13 @@ async fn get_system_info_riporta_modello_e_router_account() {
         .unwrap()
         .iter()
         .find(|r| r["area"] == "NAS")
-        .expect("diritto NAS");
+        .expect("NAS right");
     assert_eq!(nas["access"], "none");
 }
 
 #[tokio::test]
-async fn get_wan_status_connessione_ppp_su_ethernet() {
-    let d = dati("get_wan_status", json!({})).await;
+async fn get_wan_status_ppp_connection_over_ethernet() {
+    let d = tool_data("get_wan_status", json!({})).await;
     assert_eq!(d["connection_type"], "PPP");
     assert_eq!(d["connected"], true);
     assert_eq!(d["link"]["access_type"], "Ethernet");
@@ -104,22 +104,22 @@ async fn get_wan_status_connessione_ppp_su_ethernet() {
 }
 
 #[tokio::test]
-async fn get_bandwidth_restituisce_la_serie_degli_ultimi_secondi() {
-    let d = dati("get_bandwidth", json!({})).await;
+async fn get_bandwidth_returns_the_series_of_the_last_seconds() {
+    let d = tool_data("get_bandwidth", json!({})).await;
     assert_ne!(d["series"]["downstream_bps"], json!([]));
     assert!(d["max_downstream_bps"].as_u64().unwrap() > 0);
 }
 
 #[tokio::test]
-async fn get_dsl_status_su_accesso_ethernet_ha_la_linea_dsl_spenta() {
-    let d = dati("get_dsl_status", json!({})).await;
+async fn get_dsl_status_on_ethernet_access_has_the_dsl_line_off() {
+    let d = tool_data("get_dsl_status", json!({})).await;
     assert_eq!(d["access_type"], "Ethernet");
     assert_eq!(d["enabled"], false);
 }
 
 #[tokio::test]
-async fn list_hosts_e_get_host_sulla_lista_reale() {
-    let hosts = dati(
+async fn list_hosts_and_get_host_on_the_real_list() {
+    let hosts = tool_data(
         "list_hosts",
         json!({ "active_only": true, "include_mesh": true }),
     )
@@ -131,30 +131,30 @@ async fn list_hosts_e_get_host_sulla_lista_reale() {
             .iter()
             .all(|h| h["active"] == true)
     );
-    let mac = host_attivo(&hosts);
+    let mac = active_host(&hosts);
 
-    let host = dati("get_host", json!({ "mac": mac })).await;
+    let host = tool_data("get_host", json!({ "mac": mac })).await;
     assert_eq!(host["mac"], mac);
 }
 
 #[tokio::test]
-async fn get_mesh_topology_ha_nodi_e_link() {
-    let d = dati("get_mesh_topology", json!({})).await;
+async fn get_mesh_topology_has_nodes_and_links() {
+    let d = tool_data("get_mesh_topology", json!({})).await;
     assert_ne!(d["nodes"], json!([]));
     assert_ne!(d["links"], json!([]));
 }
 
 #[tokio::test]
-async fn get_wifi_status_trova_le_tre_reti_e_la_band_degli_ospiti_dal_canale() {
-    let d = dati("get_wifi_status", json!({})).await;
-    let reti: Vec<(&str, &str)> = d["networks"]
+async fn get_wifi_status_finds_the_three_networks_and_the_guest_band_from_the_channel() {
+    let d = tool_data("get_wifi_status", json!({})).await;
+    let networks: Vec<(&str, &str)> = d["networks"]
         .as_array()
         .unwrap()
         .iter()
         .map(|r| (r["network"].as_str().unwrap(), r["band"].as_str().unwrap()))
         .collect();
     assert_eq!(
-        reti,
+        networks,
         [
             ("main_2g", "2.4GHz"),
             ("main_5g", "5GHz"),
@@ -164,9 +164,9 @@ async fn get_wifi_status_trova_le_tre_reti_e_la_band_degli_ospiti_dal_canale() {
 }
 
 #[tokio::test]
-async fn list_wifi_clients_assegna_ogni_client_della_lista_una_volta() {
-    // le tre istanze danno lo stesso path: 14 voci, nessuna ospite (rete Ospiti spenta)
-    let d = dati("list_wifi_clients", json!({})).await;
+async fn list_wifi_clients_assigns_each_client_of_the_list_once() {
+    // the three instances give the same path: 14 entries, no guest (guest network off)
+    let d = tool_data("list_wifi_clients", json!({})).await;
     let clients = d["clients"].as_array().unwrap();
     assert_eq!(clients.len(), 14);
     let mut mac: Vec<&str> = clients.iter().map(|c| c["mac"].as_str().unwrap()).collect();
@@ -185,45 +185,45 @@ async fn list_wifi_clients_assegna_ogni_client_della_lista_una_volta() {
 }
 
 #[tokio::test]
-async fn get_lan_config_riporta_dhcp_e_router() {
-    let d = dati("get_lan_config", json!({})).await;
+async fn get_lan_config_reports_dhcp_and_router() {
+    let d = tool_data("get_lan_config", json!({})).await;
     assert_eq!(d["routers"], json!(["192.168.178.1"]));
     assert_eq!(d["dhcp_server_enabled"], true);
 }
 
 #[tokio::test]
-async fn get_device_log_pagina_il_log_reale() {
-    let d = dati("get_device_log", json!({ "lines": 2 })).await;
+async fn get_device_log_pages_the_real_log() {
+    let d = tool_data("get_device_log", json!({ "lines": 2 })).await;
     assert_eq!(d["lines"].as_array().unwrap().len(), 2);
     assert!(d["total_lines"].as_u64().unwrap() >= 2);
 }
 
 #[tokio::test]
-async fn get_time_and_update_riporta_ntp_e_aggiornamenti() {
-    let d = dati("get_time_and_update", json!({})).await;
+async fn get_time_and_update_reports_ntp_and_updates() {
+    let d = tool_data("get_time_and_update", json!({})).await;
     assert_ne!(d["ntp_servers"], json!([]));
     assert_eq!(d["auto_update"]["current_firmware_version"], "154.08.25");
 }
 
 #[tokio::test]
-async fn list_port_forwardings_legge_wanpppconnection() {
-    let d = dati("list_port_forwardings", json!({})).await;
+async fn list_port_forwardings_reads_wanpppconnection() {
+    let d = tool_data("list_port_forwardings", json!({})).await;
     assert_eq!(d["connection"], "ppp");
     assert_ne!(d["port_forwardings"], json!([]));
 }
 
 #[tokio::test]
-async fn get_access_control_con_e_senza_mac() {
-    dati("get_access_control", json!({})).await;
-    let hosts = dati("list_hosts", json!({ "active_only": true })).await;
-    let mac = host_attivo(&hosts);
+async fn get_access_control_with_and_without_mac() {
+    tool_data("get_access_control", json!({})).await;
+    let hosts = tool_data("list_hosts", json!({ "active_only": true })).await;
+    let mac = active_host(&hosts);
 
-    let d = dati("get_access_control", json!({ "mac": mac })).await;
+    let d = tool_data("get_access_control", json!({ "mac": mac })).await;
     assert_eq!(d["host"]["mac"], mac);
 }
 
 #[tokio::test]
-async fn list_smarthome_devices_senza_dispositivi_restituisce_una_lista_vuota() {
-    let d = dati("list_smarthome_devices", json!({})).await;
+async fn list_smarthome_devices_without_devices_returns_an_empty_list() {
+    let d = tool_data("list_smarthome_devices", json!({})).await;
     assert_eq!(d["devices"], json!([]));
 }

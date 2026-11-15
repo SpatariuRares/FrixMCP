@@ -1,17 +1,17 @@
-//! `Mac`: l'identità di un Host (ADR 0002).
+//! `Mac`: the identity of a Host (ADR 0002).
 
 use std::fmt;
 use std::str::FromStr;
 
 use crate::error::FrixError;
 
-/// Indirizzo MAC di 6 byte. Si scrive sempre `AA:BB:CC:DD:EE:FF` (maiuscolo, due punti),
-/// il formato della lista host del FRITZ!Box.
+/// A 6-byte MAC address. Always written `AA:BB:CC:DD:EE:FF` (uppercase, colons),
+/// the format of the FRITZ!Box host list.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Mac([u8; 6]);
 
 impl Mac {
-    /// I 6 byte dell'indirizzo.
+    /// The 6 bytes of the address.
     #[must_use]
     pub fn octets(self) -> [u8; 6] {
         self.0
@@ -21,24 +21,24 @@ impl Mac {
 impl FromStr for Mac {
     type Err = FrixError;
 
-    /// Accetta sei coppie esadecimali separate tutte da `:` o tutte da `-`, in
-    /// maiuscolo o minuscolo. Rifiuta ogni altra forma.
-    fn from_str(testo: &str) -> Result<Self, Self::Err> {
-        let non_valido = || FrixError::Validation(format!("MAC non valido: {testo:?}"));
-        let separatore = if testo.contains('-') { '-' } else { ':' };
-        let mut byte = [0_u8; 6];
-        let mut parti = testo.split(separatore);
-        for b in &mut byte {
-            let coppia = parti.next().ok_or_else(non_valido)?;
-            if coppia.len() != 2 || !coppia.bytes().all(|c| c.is_ascii_hexdigit()) {
-                return Err(non_valido());
+    /// Accepts six hex pairs separated all by `:` or all by `-`, in upper or
+    /// lower case. Rejects any other form.
+    fn from_str(text: &str) -> Result<Self, Self::Err> {
+        let invalid = || FrixError::Validation(format!("invalid MAC: {text:?}"));
+        let separator = if text.contains('-') { '-' } else { ':' };
+        let mut bytes = [0_u8; 6];
+        let mut parts = text.split(separator);
+        for b in &mut bytes {
+            let pair = parts.next().ok_or_else(invalid)?;
+            if pair.len() != 2 || !pair.bytes().all(|c| c.is_ascii_hexdigit()) {
+                return Err(invalid());
             }
-            *b = u8::from_str_radix(coppia, 16).map_err(|_| non_valido())?;
+            *b = u8::from_str_radix(pair, 16).map_err(|_| invalid())?;
         }
-        if parti.next().is_some() {
-            return Err(non_valido());
+        if parts.next().is_some() {
+            return Err(invalid());
         }
-        Ok(Self(byte))
+        Ok(Self(bytes))
     }
 }
 
@@ -61,22 +61,22 @@ mod tests {
     use super::Mac;
 
     #[test]
-    fn accetta_maiuscolo_minuscolo_e_trattini_e_normalizza() {
-        for testo in [
+    fn accepts_upper_lower_and_dashes_and_normalizes() {
+        for text in [
             "02:00:00:00:10:0A",
             "02:00:00:00:10:0a",
             "02-00-00-00-10-0a",
         ] {
             assert_eq!(
-                testo.parse::<Mac>().unwrap().to_string(),
+                text.parse::<Mac>().unwrap().to_string(),
                 "02:00:00:00:10:0A"
             );
         }
     }
 
     #[test]
-    fn rifiuta_le_forme_non_valide() {
-        for testo in [
+    fn rejects_invalid_forms() {
+        for text in [
             "",
             "02:00:00:00:10",
             "02:00:00:00:10:0A:FF",
@@ -88,8 +88,8 @@ mod tests {
             " 02:00:00:00:10:0A",
             "192.168.178.20",
         ] {
-            let errore = testo.parse::<Mac>().unwrap_err();
-            assert_eq!(errore.kind(), "validation", "{testo:?}");
+            let error = text.parse::<Mac>().unwrap_err();
+            assert_eq!(error.kind(), "validation", "{text:?}");
         }
     }
 }

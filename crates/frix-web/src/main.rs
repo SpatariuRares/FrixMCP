@@ -1,6 +1,6 @@
-//! `frix-web`: dashboard locale su 127.0.0.1.
+//! `frix-web`: local dashboard on 127.0.0.1.
 //!
-//! Vuoto fino alla Fase 3 (docs/PROJECT.md §9): esiste solo per fissare il
-//! layout del workspace e la regola di dipendenza.
+//! Empty until Phase 3 (docs/PROJECT.md §9): it exists only to fix the
+//! workspace layout and the dependency rule.
 
 fn main() {}

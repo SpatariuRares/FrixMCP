@@ -1,38 +1,38 @@
-//! `cargo xtask record`: registra le risposte del router reale e ne produce copie oscurate
-//! (docs/PROJECT.md §6.6). Esegue solo letture: i tool della §8.1 attraverso la Policy,
-//! più un registratore che rifiuta da sé ogni azione che non sia di Level Read.
-//! Tutto l'output va su stderr.
+//! `cargo xtask record`: records the real router's responses and produces redacted copies
+//! (docs/PROJECT.md §6.6). It only reads: the §8.1 tools through the Policy, plus a
+//! recorder that itself rejects every action that is not Level Read.
+//! All output goes to stderr.
 
 use std::path::PathBuf;
 use std::process::ExitCode;
 
-use xtask::registra::registra_dal_router;
-use xtask::salva::{cartella_predefinita, salva};
+use xtask::record::record_from_router;
+use xtask::save::{default_dir, save};
 
-const USAGE: &str = "uso: cargo xtask record [--out <cartella>] [flag di frix-mcp: --config, --host, --username, --tls-mode, --tls-pin, --tls-ca-file, --http-port]
+const USAGE: &str = "usage: cargo xtask record [--out <dir>] [frix-mcp flags: --config, --host, --username, --tls-mode, --tls-pin, --tls-ca-file, --http-port]
 
-Esegue le letture dei tool della §8.1 sul router reale (password dal Keychain) e scrive:
-  <cartella>/grezze/    risposte così come arrivano (dati personali: non pubblicarle)
-  <cartella>/oscurate/  copie oscurate, con il layout di crates/frix-core/tests/fixtures/
-Cartella di default: crates/frix-core/tests/fixtures/raw/ (esclusa da git).";
+Runs the reads of the §8.1 tools on the real router (password from the Keychain) and writes:
+  <dir>/unredacted/  responses as received (personal data: do not publish them)
+  <dir>/redacted/    redacted copies, with the layout of crates/frix-core/tests/fixtures/
+Default dir: crates/frix-core/tests/fixtures/raw/ (ignored by git).";
 
-type Errore = Box<dyn std::error::Error + Send + Sync>;
+type BoxError = Box<dyn std::error::Error + Send + Sync>;
 
-// perché: stderr è l'unico canale del comando.
+// why: stderr is the command's only channel.
 #[allow(clippy::print_stderr)]
 #[tokio::main]
 async fn main() -> ExitCode {
     match run().await {
-        Ok(codice) => codice,
-        Err(errore) => {
-            eprintln!("xtask: {errore}");
+        Ok(code) => code,
+        Err(error) => {
+            eprintln!("xtask: {error}");
             ExitCode::FAILURE
         }
     }
 }
 
 #[allow(clippy::print_stderr)]
-async fn run() -> Result<ExitCode, Errore> {
+async fn run() -> Result<ExitCode, BoxError> {
     let mut args = std::env::args().skip(1);
     match args.next().as_deref() {
         Some("record") => {}
@@ -40,45 +40,45 @@ async fn run() -> Result<ExitCode, Errore> {
             eprintln!("{USAGE}");
             return Ok(ExitCode::SUCCESS);
         }
-        Some(altro) => return Err(format!("comando sconosciuto: {altro}\n{USAGE}").into()),
+        Some(other) => return Err(format!("unknown command: {other}\n{USAGE}").into()),
     }
-    let mut cartella = cartella_predefinita();
-    let mut flag_frix = Vec::new();
+    let mut dir = default_dir();
+    let mut frix_flags = Vec::new();
     while let Some(arg) = args.next() {
         if arg == "--help" || arg == "-h" {
             eprintln!("{USAGE}");
             return Ok(ExitCode::SUCCESS);
         } else if arg == "--out" {
-            cartella = PathBuf::from(args.next().ok_or("--out richiede una cartella")?);
-        } else if let Some(valore) = arg.strip_prefix("--out=") {
-            cartella = PathBuf::from(valore);
+            dir = PathBuf::from(args.next().ok_or("--out requires a directory")?);
+        } else if let Some(value) = arg.strip_prefix("--out=") {
+            dir = PathBuf::from(value);
         } else {
-            flag_frix.push(arg);
+            frix_flags.push(arg);
         }
     }
 
-    let registrazione = registra_dal_router(flag_frix).await?;
-    let mut fallite = 0;
-    for esito in &registrazione.esiti {
-        match &esito.errore {
-            None => eprintln!("ok      {}", esito.tool),
-            Some(errore) => {
-                fallite += 1;
-                eprintln!("errore  {}: {errore}", esito.tool);
+    let recording = record_from_router(frix_flags).await?;
+    let mut failed = 0;
+    for outcome in &recording.outcomes {
+        match &outcome.error {
+            None => eprintln!("ok      {}", outcome.tool),
+            Some(error) => {
+                failed += 1;
+                eprintln!("error   {}: {error}", outcome.tool);
             }
         }
     }
-    let salvataggio = salva(&registrazione.scambi, &cartella)?;
-    for scartato in &salvataggio.scartati {
-        eprintln!("scartato {scartato}");
+    let saved = save(&recording.exchanges, &dir)?;
+    for skipped in &saved.skipped {
+        eprintln!("skipped {skipped}");
     }
     eprintln!(
-        "{} fixture in {}/grezze e {}/oscurate. Rileggi le copie oscurate prima di spostarle in tests/fixtures/.",
-        salvataggio.file.len(),
-        cartella.display(),
-        cartella.display()
+        "{} fixtures in {}/unredacted and {}/redacted. Review the redacted copies before moving them to tests/fixtures/.",
+        saved.files.len(),
+        dir.display(),
+        dir.display()
     );
-    Ok(if fallite == 0 {
+    Ok(if failed == 0 {
         ExitCode::SUCCESS
     } else {
         ExitCode::FAILURE

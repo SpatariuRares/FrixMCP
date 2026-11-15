@@ -1,3 +1,3 @@
-# Gli Host si indicano sempre per MAC
+# Hosts are always addressed by MAC
 
-Tutti i tool che agiscono su un Host accettano solo il MAC; FrixMCP risolve MAC → IP al momento della chiamata, anche per le azioni del router che lavorano per IP (HostFilter, priorità). Un IP assegnato via DHCP può passare a un altro Host tra la lettura e la scrittura, e bloccare Internet "all'IP dell'iPad" rischia di colpire la smart TV che ha ricevuto quel lease. Accettiamo che un telefono con indirizzo Wi-Fi privato appaia come più Host distinti: è ciò che vede il router.
+Every tool that acts on a Host accepts only the MAC; FrixMCP resolves MAC → IP at call time, even for router actions that work by IP (HostFilter, priority). A DHCP-assigned IP can move to another Host between the read and the write, and blocking the internet "for the iPad's IP" risks hitting the smart TV that received that lease. We accept that a phone with a private Wi-Fi address shows up as several distinct Hosts: that is what the router sees.

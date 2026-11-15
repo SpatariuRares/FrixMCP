@@ -1,11 +1,11 @@
-//! HTTP Digest (RFC 2617, RFC 7616), l'autenticazione delle chiamate TR-064
+//! HTTP Digest (RFC 2617, RFC 7616), the authentication of TR-064 calls
 //! (docs/PROJECT.md §5.1).
 //!
-//! I parametri effettivi del 7590 (`qop`, `algorithm`, `opaque`) non sono ancora
-//! verificati (§14.3): si supportano `qop=auth` o nessun `qop` (compatibilità RFC 2069),
-//! `algorithm` `MD5`, `MD5-sess`, `SHA-256` o `SHA-256-sess` (RFC 7616), `opaque`
-//! facoltativo. `qop=auth-int` (serve l'hash del corpo) e gli altri algoritmi
-//! (`SHA-512-256`, …) vengono rifiutati con un errore che li nomina.
+//! The 7590's actual parameters (`qop`, `algorithm`, `opaque`) are not verified yet
+//! (§14.3): supported are `qop=auth` or no `qop` (RFC 2069 compatibility), `algorithm`
+//! `MD5`, `MD5-sess`, `SHA-256` or `SHA-256-sess` (RFC 7616), optional `opaque`.
+//! `qop=auth-int` (needs the body hash) and other algorithms (`SHA-512-256`, …)
+//! are rejected with an error that names them.
 
 use std::fmt::Write as _;
 
@@ -15,10 +15,10 @@ use secrecy::{ExposeSecret as _, SecretString};
 
 use crate::error::FrixError;
 
-/// Algoritmo della sfida Digest.
+/// Algorithm of the Digest challenge.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Algorithm {
-    /// `MD5` (anche quando `algorithm` manca).
+    /// `MD5` (also when `algorithm` is missing).
     Md5,
     /// `MD5-sess`.
     Md5Sess,
@@ -42,54 +42,54 @@ impl Algorithm {
         }
     }
 
-    /// Hash esadecimale minuscolo delle parti unite da `:`.
-    fn hex(self, parti: &[&str]) -> String {
-        let unite = parti.join(":");
+    /// Lowercase hex hash of the parts joined by `:`.
+    fn hex(self, parts: &[&str]) -> String {
+        let joined = parts.join(":");
         match self {
-            Self::Md5 | Self::Md5Sess => hex(&Md5::digest(unite.as_bytes())),
+            Self::Md5 | Self::Md5Sess => hex(&Md5::digest(joined.as_bytes())),
             Self::Sha256 | Self::Sha256Sess => {
-                let mut contesto = Sha256Context::new(&SHA256);
-                contesto.update(unite.as_bytes());
-                hex(contesto.finish().as_ref())
+                let mut context = Sha256Context::new(&SHA256);
+                context.update(joined.as_bytes());
+                hex(context.finish().as_ref())
             }
         }
     }
 }
 
-/// Una sfida `WWW-Authenticate: Digest …` già interpretata.
+/// A parsed `WWW-Authenticate: Digest …` challenge.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Challenge {
     realm: String,
     nonce: String,
     opaque: Option<String>,
     algorithm: Algorithm,
-    /// Vero se il server offre `qop=auth`; falso se non offre `qop` (RFC 2069).
+    /// True if the server offers `qop=auth`; false if it offers no `qop` (RFC 2069).
     qop_auth: bool,
-    /// `stale=true`: il nonce è scaduto ma le credenziali erano giuste.
+    /// `stale=true`: the nonce expired but the credentials were right.
     pub(crate) stale: bool,
 }
 
 impl Challenge {
-    /// Interpreta il valore di un header `WWW-Authenticate` con schema `Digest`.
+    /// Parses the value of a `WWW-Authenticate` header with the `Digest` scheme.
     pub(crate) fn parse(header: &str) -> Result<Self, FrixError> {
         let header = header.trim();
-        let (schema, resto) = header
+        let (scheme, rest) = header
             .split_once(char::is_whitespace)
             .unwrap_or((header, ""));
-        if !schema.eq_ignore_ascii_case("Digest") {
+        if !scheme.eq_ignore_ascii_case("Digest") {
             return Err(FrixError::Transport(format!(
-                "schema di autenticazione non supportato: {schema}"
+                "unsupported authentication scheme: {scheme}"
             )));
         }
-        let parametri = parse_params(resto)?;
-        let valore = |nome: &str| {
-            parametri
+        let params = parse_params(rest)?;
+        let value = |name: &str| {
+            params
                 .iter()
-                .find(|(n, _)| n.eq_ignore_ascii_case(nome))
+                .find(|(n, _)| n.eq_ignore_ascii_case(name))
                 .map(|(_, v)| v.clone())
         };
-        let manca = |nome: &str| FrixError::Transport(format!("sfida Digest senza {nome}"));
-        let algorithm = match valore("algorithm") {
+        let missing = |name: &str| FrixError::Transport(format!("Digest challenge without {name}"));
+        let algorithm = match value("algorithm") {
             None => Algorithm::Md5,
             Some(a) => [
                 Algorithm::Md5,
@@ -98,10 +98,10 @@ impl Challenge {
                 Algorithm::Sha256Sess,
             ]
             .into_iter()
-            .find(|noto| a.eq_ignore_ascii_case(noto.name()))
-            .ok_or_else(|| FrixError::Transport(format!("algoritmo Digest non supportato: {a}")))?,
+            .find(|known| a.eq_ignore_ascii_case(known.name()))
+            .ok_or_else(|| FrixError::Transport(format!("unsupported Digest algorithm: {a}")))?,
         };
-        let qop_auth = match valore("qop") {
+        let qop_auth = match value("qop") {
             None => false,
             Some(qop)
                 if qop
@@ -112,24 +112,24 @@ impl Challenge {
             }
             Some(qop) => {
                 return Err(FrixError::Transport(format!(
-                    "qop Digest non supportato: {qop}"
+                    "unsupported Digest qop: {qop}"
                 )));
             }
         };
         Ok(Self {
-            realm: valore("realm").ok_or_else(|| manca("realm"))?,
-            nonce: valore("nonce").ok_or_else(|| manca("nonce"))?,
-            opaque: valore("opaque"),
+            realm: value("realm").ok_or_else(|| missing("realm"))?,
+            nonce: value("nonce").ok_or_else(|| missing("nonce"))?,
+            opaque: value("opaque"),
             algorithm,
             qop_auth,
-            stale: valore("stale").is_some_and(|s| s.eq_ignore_ascii_case("true")),
+            stale: value("stale").is_some_and(|s| s.eq_ignore_ascii_case("true")),
         })
     }
 
-    /// Valore dell'header `Authorization` per una richiesta `method uri`.
+    /// Value of the `Authorization` header for a `method uri` request.
     ///
-    /// `nc` è il contatore delle richieste fatte con questo nonce (da 1), `cnonce`
-    /// il nonce scelto dal client. Senza `qop` nella sfida entrambi vengono ignorati.
+    /// `nc` is the count of requests made with this nonce (from 1), `cnonce` the
+    /// nonce chosen by the client. Without `qop` in the challenge both are ignored.
     pub(crate) fn authorization(
         &self,
         username: &str,
@@ -139,7 +139,7 @@ impl Challenge {
         nc: u32,
         cnonce: &str,
     ) -> Result<String, FrixError> {
-        let h = |parti: &[&str]| self.algorithm.hex(parti);
+        let h = |parts: &[&str]| self.algorithm.hex(parts);
         let mut ha1 = h(&[username, &self.realm, password.expose_secret()]);
         if self.algorithm.sess() {
             ha1 = h(&[&ha1, &self.nonce, cnonce]);
@@ -170,64 +170,61 @@ impl Challenge {
     }
 }
 
-/// Byte in esadecimale minuscolo.
-fn hex(byte: &[u8]) -> String {
-    byte.iter().fold(String::new(), |mut s, b| {
+/// Bytes as lowercase hex.
+fn hex(bytes: &[u8]) -> String {
+    bytes.iter().fold(String::new(), |mut s, b| {
         let _ = write!(s, "{b:02x}");
         s
     })
 }
 
-/// `quoted-string` di RFC 2616: virgolette e barre rovesciate escapate, niente controlli.
-fn quote(valore: &str) -> Result<String, FrixError> {
-    if valore.chars().any(char::is_control) {
+/// RFC 2616 `quoted-string`: quotes and backslashes escaped, no control characters.
+fn quote(value: &str) -> Result<String, FrixError> {
+    if value.chars().any(char::is_control) {
         return Err(FrixError::Validation(
-            "carattere di controllo in un parametro Digest".into(),
+            "control character in a Digest parameter".into(),
         ));
     }
     Ok(format!(
         "\"{}\"",
-        valore.replace('\\', "\\\\").replace('"', "\\\"")
+        value.replace('\\', "\\\\").replace('"', "\\\"")
     ))
 }
 
-/// `auth-param` separati da virgole: `nome=token` o `nome="quoted string"`.
-fn parse_params(testo: &str) -> Result<Vec<(String, String)>, FrixError> {
-    let errore = || FrixError::Transport("sfida Digest non interpretabile".into());
-    let mut parametri = Vec::new();
-    let mut caratteri = testo.chars().peekable();
+/// Comma-separated `auth-param`s: `name=token` or `name="quoted string"`.
+fn parse_params(text: &str) -> Result<Vec<(String, String)>, FrixError> {
+    let invalid = || FrixError::Transport("unparsable Digest challenge".into());
+    let mut params = Vec::new();
+    let mut chars = text.chars().peekable();
     loop {
-        while caratteri
-            .next_if(|c| c.is_whitespace() || *c == ',')
-            .is_some()
-        {}
-        if caratteri.peek().is_none() {
-            return Ok(parametri);
+        while chars.next_if(|c| c.is_whitespace() || *c == ',').is_some() {}
+        if chars.peek().is_none() {
+            return Ok(params);
         }
-        let mut nome = String::new();
-        while let Some(c) = caratteri.next_if(|c| *c != '=' && *c != ',' && !c.is_whitespace()) {
-            nome.push(c);
+        let mut name = String::new();
+        while let Some(c) = chars.next_if(|c| *c != '=' && *c != ',' && !c.is_whitespace()) {
+            name.push(c);
         }
-        while caratteri.next_if(|c| c.is_whitespace()).is_some() {}
-        if caratteri.next() != Some('=') || nome.is_empty() {
-            return Err(errore());
+        while chars.next_if(|c| c.is_whitespace()).is_some() {}
+        if chars.next() != Some('=') || name.is_empty() {
+            return Err(invalid());
         }
-        while caratteri.next_if(|c| c.is_whitespace()).is_some() {}
-        let mut valore = String::new();
-        if caratteri.next_if_eq(&'"').is_some() {
+        while chars.next_if(|c| c.is_whitespace()).is_some() {}
+        let mut value = String::new();
+        if chars.next_if_eq(&'"').is_some() {
             loop {
-                match caratteri.next().ok_or_else(errore)? {
+                match chars.next().ok_or_else(invalid)? {
                     '"' => break,
-                    '\\' => valore.push(caratteri.next().ok_or_else(errore)?),
-                    c => valore.push(c),
+                    '\\' => value.push(chars.next().ok_or_else(invalid)?),
+                    c => value.push(c),
                 }
             }
         } else {
-            while let Some(c) = caratteri.next_if(|c| *c != ',' && !c.is_whitespace()) {
-                valore.push(c);
+            while let Some(c) = chars.next_if(|c| *c != ',' && !c.is_whitespace()) {
+                value.push(c);
             }
         }
-        parametri.push((nome, valore));
+        params.push((name, value));
     }
 }
 
@@ -243,11 +240,11 @@ mod tests {
     use super::*;
     use secrecy::SecretString;
 
-    /// Vettore di esempio di RFC 2617 §3.5.
+    /// Example vector of RFC 2617 §3.5.
     const RFC_CHALLENGE: &str = r#"Digest realm="testrealm@host.com", qop="auth,auth-int", nonce="dcd98b7102dd2f0e8b11d0f600bfb0c093", opaque="5ccc069c403ebaf9f0171e9517f40e41""#;
 
     #[test]
-    fn risposta_del_vettore_di_esempio_di_rfc_2617() {
+    fn response_of_the_rfc_2617_example_vector() {
         let challenge = Challenge::parse(RFC_CHALLENGE).unwrap();
         let password = SecretString::from("Circle Of Life");
 
@@ -259,7 +256,7 @@ mod tests {
             header.contains(r#"response="6629fae49393a05397450978507c4ef1""#),
             "{header}"
         );
-        for parte in [
+        for part in [
             r#"username="Mufasa""#,
             r#"realm="testrealm@host.com""#,
             r#"nonce="dcd98b7102dd2f0e8b11d0f600bfb0c093""#,
@@ -269,14 +266,14 @@ mod tests {
             r#"cnonce="0a4f113b""#,
             r#"opaque="5ccc069c403ebaf9f0171e9517f40e41""#,
         ] {
-            assert!(header.contains(parte), "manca {parte} in {header}");
+            assert!(header.contains(part), "missing {part} in {header}");
         }
         assert!(header.starts_with("Digest "), "{header}");
     }
 
-    // Valori attesi calcolati a parte con `hashlib` di Python sugli stessi input.
+    // Expected values computed separately with Python's `hashlib` on the same inputs.
     #[test]
-    fn senza_qop_usa_la_risposta_di_rfc_2069() {
+    fn without_qop_uses_the_rfc_2069_response() {
         let challenge = Challenge::parse(
             r#"Digest realm="testrealm@host.com", nonce="dcd98b7102dd2f0e8b11d0f600bfb0c093""#,
         )
@@ -298,7 +295,7 @@ mod tests {
     }
 
     #[test]
-    fn md5_sess_entra_nella_risposta() {
+    fn md5_sess_enters_the_response() {
         let challenge = Challenge::parse(
             r#"Digest realm="testrealm@host.com", nonce="dcd98b7102dd2f0e8b11d0f600bfb0c093", qop=auth, algorithm=MD5-sess"#,
         )
@@ -318,7 +315,7 @@ mod tests {
         assert!(header.contains("algorithm=MD5-sess"));
     }
 
-    /// Esempio di RFC 7616 §3.9.1: stessa sfida, con `MD5` e con `SHA-256`.
+    /// Example of RFC 7616 §3.9.1: same challenge, with `MD5` and with `SHA-256`.
     fn rfc_7616(algorithm: &str) -> String {
         let challenge = Challenge::parse(&format!(
             r#"Digest realm="http-auth@example.org", qop="auth, auth-int", algorithm={algorithm}, nonce="7ypf/xlj9XXwfDPEoM4URrv/xwf94BcCAzFZH4GiTo0v", opaque="FQhe/qaU925kfnzjCev0ciny7QMkPqMAFRtzCUYo5tdS""#
@@ -337,7 +334,7 @@ mod tests {
     }
 
     #[test]
-    fn risposta_del_vettore_sha_256_di_rfc_7616() {
+    fn response_of_the_rfc_7616_sha_256_vector() {
         let header = rfc_7616("SHA-256");
 
         assert!(
@@ -350,7 +347,7 @@ mod tests {
     }
 
     #[test]
-    fn risposta_del_vettore_md5_di_rfc_7616() {
+    fn response_of_the_rfc_7616_md5_vector() {
         let header = rfc_7616("MD5");
 
         assert!(
@@ -360,20 +357,20 @@ mod tests {
     }
 
     #[test]
-    fn rifiuta_varianti_non_supportate() {
-        for sfida in [
+    fn rejects_unsupported_variants() {
+        for challenge in [
             r#"Basic realm="x""#,
             r#"Digest realm="x", nonce="n", qop="auth-int""#,
             r#"Digest realm="x", nonce="n", algorithm=SHA-512-256"#,
             r#"Digest realm="x""#,
             r#"Digest realm="x", nonce="n"#,
         ] {
-            assert!(Challenge::parse(sfida).is_err(), "{sfida}");
+            assert!(Challenge::parse(challenge).is_err(), "{challenge}");
         }
     }
 
     #[test]
-    fn riconosce_stale() {
+    fn recognizes_stale() {
         let c = Challenge::parse(r#"Digest realm="x", nonce="n", stale=TRUE"#).unwrap();
         assert!(c.stale);
     }

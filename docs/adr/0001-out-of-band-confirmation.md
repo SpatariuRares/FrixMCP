@@ -1,15 +1,15 @@
-# Confirmation fuori banda, non token in-band
+# Out-of-band Confirmation, not an in-band token
 
-Le operazioni Dangerous richieste dall'Agent si eseguono solo dopo una Confirmation dell'Operator data in un dialog nativo di macOS mostrato da `frix-mcp`, con la Preview dell'effetto; il dialog scade dopo 120 s e la scadenza o la chiusura valgono come rifiuto. Abbiamo scartato il `confirm_token` monouso restituito nella conversazione (proposto in origine in `docs/PROJECT.md` §8.0) perché l'Agent riceve il token e può rimandarlo da solo, anche sotto prompt injection: sembrava una conferma umana senza esserlo.
+Dangerous operations requested by the Agent run only after a Confirmation from the Operator, given in a native macOS dialog shown by `frix-mcp` with the Preview of the effect; the dialog expires after 120 s, and expiry or closing count as a refusal. We rejected the single-use `confirm_token` returned in the conversation (originally proposed in `docs/PROJECT.md` §8.0) because the Agent receives the token and can send it back by itself, even under prompt injection: it looked like a human confirmation without being one.
 
 ## Consequences
 
-- `frix-mcp` deve poter mostrare un dialog sul Control Host, quindi le operazioni Dangerous da MCP funzionano solo con un Operator davanti al Mac.
-- L'Agent riceve soltanto "Confirmation negata o scaduta", mai il motivo.
-- Dalla dashboard la Confirmation è il dialog della UI, perché lì l'Initiator è già l'Operator.
+- `frix-mcp` must be able to show a dialog on the Control Host, so Dangerous operations from MCP work only with an Operator in front of the Mac.
+- The Agent only receives "Confirmation denied or expired", never the reason.
+- From the dashboard the Confirmation is the UI dialog, because there the Initiator is already the Operator.
 
-## Aggiornamento 2026-11-13
+## Update 2026-11-13
 
-- La proprietà richiesta è il canale: la Confirmation passa da un canale che l'Agent non può leggere né azionare. Il dialog nativo è il meccanismo candidato, **[DA VERIFICARE]** con lo spike della Fase 4 (`docs/PROJECT.md` §11): un processo dello stesso utente potrebbe premere il pulsante, e 120 s potrebbero superare il timeout del client MCP. Se lo spike fallisce, i tool Dangerous restano Forbidden.
-- La terza conseguenza è sospesa: in v1 `frix-web` è in sola lettura (`docs/PROJECT.md` §6.4). Le scritture dalla dashboard richiederanno un ADR su come la dashboard autentica l'Operator, perché oggi qualunque processo locale può aprire `127.0.0.1`.
-- La garanzia vale nei deployment supportati di `docs/PROJECT.md` §7.0: un Agent con una shell sul Control Host può aggirare qualunque dialog.
+- The required property is the channel: the Confirmation goes through a channel the Agent can neither read nor operate. The native dialog is the candidate mechanism, **[TO VERIFY]** with the Phase 4 spike (`docs/PROJECT.md` §11): a process running as the same user could press the button, and 120 s could exceed the MCP client's timeout. If the spike fails, the Dangerous tools stay Forbidden.
+- The third consequence is suspended: in v1 `frix-web` is read-only (`docs/PROJECT.md` §6.4). Writes from the dashboard will need an ADR on how the dashboard authenticates the Operator, because today any local process can open `127.0.0.1`.
+- The guarantee holds in the supported deployments of `docs/PROJECT.md` §7.0: an Agent with a shell on the Control Host can bypass any dialog.

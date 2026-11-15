@@ -1,133 +1,141 @@
-//! Configurazione del collegamento al router (docs/PROJECT.md §7.4, §13.5): `config.toml`
-//! fuori dal repo, sovrascrivibile da flag. Nessuna password: quella sta nel Keychain.
+//! Router connection configuration (docs/PROJECT.md §7.4, §13.5): `config.toml`
+//! outside the repo, overridable by flags. No password: that lives in the Keychain.
 //!
 //! ```toml
 //! host = "192.168.178.1"
 //! username = "frixmcp"
 //! # http_port = 49000
-//! # hide_serial_number = true       # get_system_info non mostra il seriale (§8.1)
+//! # hide_serial_number = true       # get_system_info hides the serial (§8.1)
+//! # language = "it"                 # Operator messages: "en" (default) or "it"
 //!
 //! [tls]
-//! mode = "pin"                       # default; oppure "ca"
-//! pinned_sha256 = "AB:CD:…"          # per mode = "pin"
-//! # ca_file = "router.der"           # per mode = "ca", relativo al file di config
+//! mode = "pin"                       # default; or "ca"
+//! pinned_sha256 = "AB:CD:…"          # for mode = "pin"
+//! # ca_file = "router.der"           # for mode = "ca", relative to the config file
 //! ```
 //!
-//! Le chiavi sconosciute sono un errore: non esiste una chiave per disattivare la
-//! verifica TLS, e una scritta per sbaglio non viene ignorata in silenzio.
+//! Unknown keys are an error: there is no key to disable TLS verification, and one
+//! written by mistake is not silently ignored.
 
 use std::path::{Path, PathBuf};
 
 use serde::Deserialize;
 
-use crate::error::FrixError;
+use crate::error::{ConfigError, FrixError};
+use crate::language::Language;
 use crate::transport::{DEFAULT_HTTP_PORT, Fingerprint, RouterSettings, TlsTrust};
 
-/// Configurazione parziale, da `config.toml` o dai flag: i campi assenti restano `None`.
+/// Partial configuration, from `config.toml` or flags: absent fields stay `None`.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ConfigFile {
-    /// IP o nome del router.
+    /// IP or name of the router.
     pub host: Option<String>,
     /// Router Account.
     pub username: Option<String>,
-    /// Porta HTTP in chiaro (default 49000).
+    /// Plain HTTP port (default 49000).
     pub http_port: Option<u16>,
-    /// Oscura il numero di serie del router nelle risposte all'Agent (default `false`).
+    /// Redacts the router's serial number in responses to the Agent (default `false`).
     pub hide_serial_number: Option<bool>,
-    /// Sezione `[tls]`.
+    /// Language of the messages for the Operator (default English).
+    pub language: Option<Language>,
+    /// `[tls]` section.
     #[serde(default)]
     pub tls: TlsSection,
 }
 
-/// Sezione `[tls]`.
+/// `[tls]` section.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct TlsSection {
-    /// `pin` (default) o `ca`.
+    /// `pin` (default) or `ca`.
     pub mode: Option<TlsMode>,
-    /// Impronta SHA-256 del certificato del router, per `pin`.
+    /// SHA-256 fingerprint of the router's certificate, for `pin`.
     pub pinned_sha256: Option<String>,
-    /// Certificato DER del router, per `ca`; relativo alla cartella del file di config.
+    /// The router's DER certificate, for `ca`; relative to the config file's directory.
     pub ca_file: Option<PathBuf>,
 }
 
-/// Le sole due modalità TLS: non ne esiste una che non verifichi.
+/// The only two TLS modes: there is none that skips verification.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum TlsMode {
-    /// Impronta SHA-256 del certificato.
+    /// SHA-256 fingerprint of the certificate.
     Pin,
-    /// Certificato del router come unica root.
+    /// The router's certificate as the only root.
     Ca,
 }
 
 impl std::str::FromStr for TlsMode {
     type Err = FrixError;
 
-    fn from_str(testo: &str) -> Result<Self, Self::Err> {
-        match testo {
+    fn from_str(text: &str) -> Result<Self, Self::Err> {
+        match text {
             "pin" => Ok(Self::Pin),
             "ca" => Ok(Self::Ca),
-            altro => Err(FrixError::Config(format!(
-                "modalità TLS sconosciuta: {altro:?} (ammesse: pin, ca)"
+            other => Err(FrixError::Config(ConfigError::UnknownTlsMode(
+                other.to_owned(),
             ))),
         }
     }
 }
 
-/// Configurazione completa e validata.
+/// Complete, validated configuration.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RouterConfig {
-    /// Host, porta e verifica TLS.
+    /// Host, port and TLS verification.
     pub settings: RouterSettings,
-    /// Router Account; la password si legge dal Keychain con questo nome.
+    /// Router Account; the password is read from the Keychain under this name.
     pub username: String,
-    /// Il numero di serie del router non arriva all'Agent.
+    /// The router's serial number does not reach the Agent.
     pub hide_serial_number: bool,
+    /// Language of the messages for the Operator.
+    pub language: Language,
 }
 
 impl ConfigFile {
-    /// Interpreta il testo di `config.toml`.
-    pub fn parse(testo: &str) -> Result<Self, FrixError> {
-        toml::from_str(testo).map_err(|e| FrixError::Config(format!("config.toml: {e}")))
+    /// Parses the text of `config.toml`.
+    pub fn parse(text: &str) -> Result<Self, FrixError> {
+        toml::from_str(text).map_err(|e| FrixError::Config(ConfigError::Toml(e.to_string())))
     }
 
-    /// I campi presenti in `altro` (per esempio i flag) vincono su quelli di `self`.
+    /// Fields present in `other` (for example the flags) win over those of `self`.
     #[must_use]
-    pub fn overridden_by(self, altro: Self) -> Self {
+    pub fn overridden_by(self, other: Self) -> Self {
         Self {
-            host: altro.host.or(self.host),
-            username: altro.username.or(self.username),
-            http_port: altro.http_port.or(self.http_port),
-            hide_serial_number: altro.hide_serial_number.or(self.hide_serial_number),
+            host: other.host.or(self.host),
+            username: other.username.or(self.username),
+            http_port: other.http_port.or(self.http_port),
+            hide_serial_number: other.hide_serial_number.or(self.hide_serial_number),
+            language: other.language.or(self.language),
             tls: TlsSection {
-                mode: altro.tls.mode.or(self.tls.mode),
-                pinned_sha256: altro.tls.pinned_sha256.or(self.tls.pinned_sha256),
-                ca_file: altro.tls.ca_file.or(self.tls.ca_file),
+                mode: other.tls.mode.or(self.tls.mode),
+                pinned_sha256: other.tls.pinned_sha256.or(self.tls.pinned_sha256),
+                ca_file: other.tls.ca_file.or(self.tls.ca_file),
             },
         }
     }
 
-    /// Valida e completa; `base` è la cartella contro cui si risolve un `ca_file` relativo.
+    /// Validates and completes; `base` is the directory a relative `ca_file` resolves against.
     pub fn resolve(self, base: &Path) -> Result<RouterConfig, FrixError> {
-        let manca = |chiave: &str| {
-            FrixError::Config(format!("manca `{chiave}` (nel file di config o come flag)"))
-        };
-        let host = self.host.ok_or_else(|| manca("host"))?;
-        let username = self.username.ok_or_else(|| manca("username"))?;
+        let missing = |key: &'static str| FrixError::Config(ConfigError::Missing(key));
+        let host = self.host.ok_or_else(|| missing("host"))?;
+        let username = self.username.ok_or_else(|| missing("username"))?;
         let tls = match self.tls.mode.unwrap_or(TlsMode::Pin) {
             TlsMode::Pin => TlsTrust::Pin(
                 self.tls
                     .pinned_sha256
-                    .ok_or_else(|| manca("tls.pinned_sha256"))?
+                    .ok_or_else(|| missing("tls.pinned_sha256"))?
                     .parse::<Fingerprint>()
-                    .map_err(|e| FrixError::Config(format!("tls.pinned_sha256: {e}")))?,
+                    .map_err(|_| FrixError::Config(ConfigError::InvalidPin))?,
             ),
             TlsMode::Ca => {
-                let file = base.join(self.tls.ca_file.ok_or_else(|| manca("tls.ca_file"))?);
+                let file = base.join(self.tls.ca_file.ok_or_else(|| missing("tls.ca_file"))?);
                 TlsTrust::Ca(std::fs::read(&file).map_err(|e| {
-                    FrixError::Config(format!("tls.ca_file {}: {e}", file.display()))
+                    FrixError::Config(ConfigError::CaFile {
+                        path: file.display().to_string(),
+                        error: e.to_string(),
+                    })
                 })?)
             }
         };
@@ -139,6 +147,7 @@ impl ConfigFile {
             },
             username,
             hide_serial_number: self.hide_serial_number.unwrap_or(false),
+            language: self.language.unwrap_or_default(),
         })
     }
 }
@@ -157,19 +166,19 @@ mod tests {
     use super::*;
     use crate::transport::TlsTrust;
 
-    const IMPRONTA: &str = "55:98:B9:D3:18:60:95:02:02:CF:CB:DD:29:07:C3:20:7C:D1:C8:CD:33:EC:4F:70:88:65:05:C5:4A:BD:E0:66";
+    const FINGERPRINT: &str = "55:98:B9:D3:18:60:95:02:02:CF:CB:DD:29:07:C3:20:7C:D1:C8:CD:33:EC:4F:70:88:65:05:C5:4A:BD:E0:66";
 
-    fn completa() -> String {
+    fn complete() -> String {
         format!(
-            "host = \"192.168.178.1\"\nusername = \"frixmcp\"\n[tls]\npinned_sha256 = \"{IMPRONTA}\"\n"
+            "host = \"192.168.178.1\"\nusername = \"frixmcp\"\n[tls]\npinned_sha256 = \"{FINGERPRINT}\"\n"
         )
     }
 
     #[test]
-    fn config_completa_in_modalita_pin_di_default() {
-        let config = ConfigFile::parse(&completa())
+    fn complete_config_defaults_to_pin_mode() {
+        let config = ConfigFile::parse(&complete())
             .unwrap()
-            .resolve(Path::new("/nessuna"))
+            .resolve(Path::new("/nowhere"))
             .unwrap();
 
         assert_eq!(config.username, "frixmcp");
@@ -177,12 +186,12 @@ mod tests {
         assert_eq!(config.settings.http_port, 49000);
         assert_eq!(
             config.settings.tls,
-            TlsTrust::Pin(IMPRONTA.parse().unwrap())
+            TlsTrust::Pin(FINGERPRINT.parse().unwrap())
         );
     }
 
     #[test]
-    fn nessuna_chiave_per_disattivare_la_verifica_tls() {
+    fn no_key_disables_tls_verification() {
         for extra in [
             "insecure = true\n",
             "[tls]\nverify = false\n",
@@ -191,57 +200,74 @@ mod tests {
             "[tls]\nmode = \"insecure\"\n",
             "[tls]\nmode = \"off\"\n",
         ] {
-            let testo = format!("host = \"h\"\nusername = \"u\"\n{extra}");
-            let errore = ConfigFile::parse(&testo).unwrap_err();
-            assert_eq!(errore.kind(), "config", "{extra}: {errore}");
+            let text = format!("host = \"h\"\nusername = \"u\"\n{extra}");
+            let error = ConfigFile::parse(&text).unwrap_err();
+            assert_eq!(error.kind(), "config", "{extra}: {error}");
         }
     }
 
     #[test]
-    fn pin_senza_impronta_rifiutato() {
-        let errore = ConfigFile::parse("host = \"h\"\nusername = \"u\"\n[tls]\nmode = \"pin\"\n")
+    fn pin_without_fingerprint_rejected() {
+        let error = ConfigFile::parse("host = \"h\"\nusername = \"u\"\n[tls]\nmode = \"pin\"\n")
             .unwrap()
-            .resolve(Path::new("/nessuna"))
+            .resolve(Path::new("/nowhere"))
             .unwrap_err();
 
-        assert!(errore.to_string().contains("pinned_sha256"), "{errore}");
+        assert!(error.to_string().contains("pinned_sha256"), "{error}");
     }
 
     #[test]
-    fn mancano_host_o_username() {
-        let errore = ConfigFile::parse("username = \"u\"")
+    fn missing_host_or_username() {
+        let error = ConfigFile::parse("username = \"u\"")
             .unwrap()
-            .resolve(Path::new("/nessuna"))
+            .resolve(Path::new("/nowhere"))
             .unwrap_err();
-        assert!(errore.to_string().contains("host"), "{errore}");
+        assert!(error.to_string().contains("host"), "{error}");
     }
 
     #[test]
-    fn il_seriale_e_visibile_salvo_hide_serial_number() {
-        let visibile = ConfigFile::parse(&completa())
+    fn serial_is_visible_unless_hide_serial_number() {
+        let visible = ConfigFile::parse(&complete())
             .unwrap()
-            .resolve(Path::new("/nessuna"))
+            .resolve(Path::new("/nowhere"))
             .unwrap();
-        let oscurato = ConfigFile::parse(&format!("hide_serial_number = true\n{}", completa()))
+        let redacted = ConfigFile::parse(&format!("hide_serial_number = true\n{}", complete()))
             .unwrap()
-            .resolve(Path::new("/nessuna"))
+            .resolve(Path::new("/nowhere"))
             .unwrap();
 
-        assert!(!visibile.hide_serial_number);
-        assert!(oscurato.hide_serial_number);
+        assert!(!visible.hide_serial_number);
+        assert!(redacted.hide_serial_number);
     }
 
     #[test]
-    fn i_flag_sovrascrivono_il_file() {
-        let flag = ConfigFile {
+    fn language_is_english_unless_set() {
+        let default = ConfigFile::parse(&complete())
+            .unwrap()
+            .resolve(Path::new("/nowhere"))
+            .unwrap();
+        let italian = ConfigFile::parse(&format!("language = \"it\"\n{}", complete()))
+            .unwrap()
+            .resolve(Path::new("/nowhere"))
+            .unwrap();
+
+        assert_eq!(default.language, Language::En);
+        assert_eq!(italian.language, Language::It);
+        let error = ConfigFile::parse("language = \"fr\"").unwrap_err();
+        assert_eq!(error.kind(), "config", "{error}");
+    }
+
+    #[test]
+    fn flags_override_the_file() {
+        let flags = ConfigFile {
             host: Some("10.0.0.1".into()),
             http_port: Some(8080),
             ..ConfigFile::default()
         };
-        let config = ConfigFile::parse(&completa())
+        let config = ConfigFile::parse(&complete())
             .unwrap()
-            .overridden_by(flag)
-            .resolve(Path::new("/nessuna"))
+            .overridden_by(flags)
+            .resolve(Path::new("/nowhere"))
             .unwrap();
 
         assert_eq!(config.settings.host, "10.0.0.1");
@@ -250,21 +276,21 @@ mod tests {
     }
 
     #[test]
-    fn modalita_ca_legge_il_certificato_relativo_al_file_di_config() {
+    fn ca_mode_reads_certificate_relative_to_config_file() {
         let dir = std::env::temp_dir().join(format!("frix-config-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
-        std::fs::write(dir.join("router.cer"), b"DER finto").unwrap();
-        let testo =
+        std::fs::write(dir.join("router.cer"), b"fake DER").unwrap();
+        let text =
             "host = \"h\"\nusername = \"u\"\n[tls]\nmode = \"ca\"\nca_file = \"router.cer\"\n";
 
-        let config = ConfigFile::parse(testo).unwrap().resolve(&dir).unwrap();
+        let config = ConfigFile::parse(text).unwrap().resolve(&dir).unwrap();
 
-        assert_eq!(config.settings.tls, TlsTrust::Ca(b"DER finto".to_vec()));
-        let mancante = ConfigFile::parse("host = \"h\"\nusername = \"u\"\n[tls]\nmode = \"ca\"\n")
+        assert_eq!(config.settings.tls, TlsTrust::Ca(b"fake DER".to_vec()));
+        let missing = ConfigFile::parse("host = \"h\"\nusername = \"u\"\n[tls]\nmode = \"ca\"\n")
             .unwrap()
             .resolve(&dir)
             .unwrap_err();
-        assert!(mancante.to_string().contains("ca_file"), "{mancante}");
+        assert!(missing.to_string().contains("ca_file"), "{missing}");
         std::fs::remove_dir_all(&dir).unwrap();
     }
 }

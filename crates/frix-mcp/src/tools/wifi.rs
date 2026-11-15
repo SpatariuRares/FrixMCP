@@ -10,12 +10,12 @@ use serde::{Deserialize, Serialize};
 use crate::response;
 use crate::server::FrixServer;
 
-/// Parametri comuni ai tool Wi-Fi.
+/// Parameters shared by the Wi-Fi tools.
 #[derive(Debug, Default, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 struct NetworkParams {
-    /// Wi-Fi Network: `main_2g` (principale 2,4 GHz), `main_5g` (principale 5 GHz),
-    /// `guest` (Ospiti) oppure `all` (default).
+    /// Wi-Fi Network: `main_2g` (main 2.4 GHz), `main_5g` (main 5 GHz),
+    /// `guest` (guest network) or `all` (default).
     #[schemars(extend("enum" = ["main_2g", "main_5g", "guest", "all"]))]
     network: Option<String>,
 }
@@ -79,11 +79,11 @@ impl FrixServer {
     #[tool(
         name = "get_wifi_status",
         description = concat!(
-            "Stato delle Wi-Fi Network del FRITZ!Box (main_2g, main_5g, guest o all): accesa, SSID, Band, canale, standard, cifratura, numero di client; per Ospiti anche timeout e isolamento. Non restituisce mai password o chiavi Wi-Fi. ",
-            dati_della_rete!()
+            "State of the FRITZ!Box Wi-Fi Networks (main_2g, main_5g, guest or all): enabled, SSID, Band, channel, standard, encryption, number of clients; for the guest network also timeout and isolation. Never returns Wi-Fi passwords or keys. ",
+            network_data!()
         ),
         annotations(
-            title = "Stato Wi-Fi",
+            title = "Wi-Fi status",
             read_only_hint = true,
             destructive_hint = false,
             idempotent_hint = true,
@@ -100,11 +100,11 @@ impl FrixServer {
     #[tool(
         name = "list_wifi_clients",
         description = concat!(
-            "Client associati alle Wi-Fi Network del FRITZ!Box (main_2g, main_5g, guest o all): MAC, IP, segnale, velocità, larghezza di canale e Band. ",
-            dati_della_rete!()
+            "Clients associated with the FRITZ!Box Wi-Fi Networks (main_2g, main_5g, guest or all): MAC, IP, signal, speed, channel width and Band. ",
+            network_data!()
         ),
         annotations(
-            title = "Client Wi-Fi",
+            title = "Wi-Fi clients",
             read_only_hint = true,
             destructive_hint = false,
             idempotent_hint = true,
@@ -121,9 +121,9 @@ impl FrixServer {
 
 impl FrixServer {
     async fn wifi_status(&self, params: &NetworkParams) -> Result<WifiStatusList, FrixError> {
-        let reti = wlan::status(&self.client, &params.networks()?).await?;
+        let networks = wlan::status(&self.client, &params.networks()?).await?;
         Ok(WifiStatusList {
-            networks: reti
+            networks: networks
                 .into_iter()
                 .map(|r| WifiStatus {
                     network: r.network.as_str(),
@@ -150,9 +150,9 @@ impl FrixServer {
     }
 
     async fn wifi_clients(&self, params: &NetworkParams) -> Result<WifiClientList, FrixError> {
-        let client = wlan::clients(&self.client, &params.networks()?).await?;
+        let clients = wlan::clients(&self.client, &params.networks()?).await?;
         Ok(WifiClientList {
-            clients: client
+            clients: clients
                 .into_iter()
                 .map(|c| WifiClient {
                     network: c.network.as_str(),

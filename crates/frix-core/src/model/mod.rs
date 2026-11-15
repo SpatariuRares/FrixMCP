@@ -1,4 +1,4 @@
-//! Tipi di dominio con validazione nel costruttore (docs/PROJECT.md §6.1, `model/`).
+//! Domain types validated in the constructor (docs/PROJECT.md §6.1, `model/`).
 
 mod host;
 mod mac;
