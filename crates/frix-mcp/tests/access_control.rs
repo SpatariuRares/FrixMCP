@@ -44,9 +44,9 @@ async fn get_access_control_without_parameters_returns_the_filter_profiles() {
         common::data(&outcome),
         json!({
             "profiles": [
-                { "id": "filtprof1", "name": "Standard" },
-                { "id": "filtprof2", "name": "Gast" },
-                { "id": "filtprof3", "name": "Gesperrt" }
+                { "id": "filtprof1", "name": "Standard", "type": "Standard" },
+                { "id": "filtprof2", "name": "Gast", "type": "Guest" },
+                { "id": "filtprof3", "name": "Gesperrt", "type": "Unrestricted" }
             ]
         })
     );

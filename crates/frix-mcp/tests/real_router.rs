@@ -100,6 +100,9 @@ async fn get_wan_status_ppp_connection_over_ethernet() {
     assert_eq!(d["connection_type"], "PPP");
     assert_eq!(d["connected"], true);
     assert_eq!(d["link"]["access_type"], "Ethernet");
+    // Gigabit port: the router says 1000000 (kbit/s), the tool says bit/s
+    assert_eq!(d["link"]["downstream_max_bps"], 1_000_000_000_u64);
+    assert_eq!(d["link"]["upstream_max_bps"], 1_000_000_000_u64);
     assert_eq!(d["dns_servers"].as_array().unwrap().len(), 2);
 }
 
@@ -115,6 +118,9 @@ async fn get_dsl_status_on_ethernet_access_has_the_dsl_line_off() {
     let d = tool_data("get_dsl_status", json!({})).await;
     assert_eq!(d["access_type"], "Ethernet");
     assert_eq!(d["enabled"], false);
+    // the router still says VDSL (the modem's setting), but there is no DSL line
+    assert_eq!(d["modulation"], Value::Null);
+    assert_eq!(d["profile"], Value::Null);
 }
 
 #[tokio::test]
@@ -203,6 +209,8 @@ async fn get_time_and_update_reports_ntp_and_updates() {
     let d = tool_data("get_time_and_update", json!({})).await;
     assert_ne!(d["ntp_servers"], json!([]));
     assert_eq!(d["auto_update"]["current_firmware_version"], "154.08.25");
+    assert_eq!(d["auto_update"]["last_firmware_version"], "154.08.20");
+    assert_eq!(d["auto_update"]["last_firmware_build"], "122916");
 }
 
 #[tokio::test]
@@ -214,7 +222,14 @@ async fn list_port_forwardings_reads_wanpppconnection() {
 
 #[tokio::test]
 async fn get_access_control_with_and_without_mac() {
-    tool_data("get_access_control", json!({})).await;
+    let profiles = tool_data("get_access_control", json!({})).await;
+    let types: Vec<&str> = profiles["profiles"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|p| p["type"].as_str().unwrap())
+        .collect();
+    assert_eq!(types, ["Guest", "Standard", "Unrestricted"]);
     let hosts = tool_data("list_hosts", json!({ "active_only": true })).await;
     let mac = active_host(&hosts);
 

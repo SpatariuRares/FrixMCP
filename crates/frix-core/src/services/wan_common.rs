@@ -12,9 +12,9 @@ pub struct LinkProperties {
     pub access_type: String,
     /// `NewPhysicalLinkStatus` (for example `Up`).
     pub physical_status: String,
-    /// `NewLayer1UpstreamMaxBitRate`, in bit/s.
+    /// `NewLayer1UpstreamMaxBitRate`, in bit/s (see [`link_properties`] for Ethernet).
     pub upstream_max_bps: u64,
-    /// `NewLayer1DownstreamMaxBitRate`, in bit/s.
+    /// `NewLayer1DownstreamMaxBitRate`, in bit/s (see [`link_properties`] for Ethernet).
     pub downstream_max_bps: u64,
 }
 
@@ -106,12 +106,27 @@ fn counter(value: i64) -> Result<u64, FrixError> {
 }
 
 /// `GetCommonLinkProperties`.
+///
+/// On a DSL line the Layer 1 rates are in bit/s. On an Ethernet WAN the 7590
+/// (FRITZ!OS 8.25) gives the port speed in kbit/s: `1000000` for a Gigabit port, while
+/// on the same line the PPP maximum is `905660` kbit/s and the online monitor's maximum
+/// about 1 Gbit/s. Here both become bit/s.
 pub async fn link_properties(client: &Tr064Client) -> Result<LinkProperties, FrixError> {
     let r = client.call(SERVICE, "GetCommonLinkProperties", &[]).await?;
+    let access_type = r.text("NewWANAccessType")?.to_owned();
+    let to_bps = |value: u64| -> Result<u64, FrixError> {
+        if access_type == "Ethernet" {
+            value
+                .checked_mul(1000)
+                .ok_or_else(|| FrixError::Parse("link rate out of range".into()))
+        } else {
+            Ok(value)
+        }
+    };
     Ok(LinkProperties {
-        access_type: r.text("NewWANAccessType")?.to_owned(),
         physical_status: r.text("NewPhysicalLinkStatus")?.to_owned(),
-        upstream_max_bps: r.parse("NewLayer1UpstreamMaxBitRate")?,
-        downstream_max_bps: r.parse("NewLayer1DownstreamMaxBitRate")?,
+        upstream_max_bps: to_bps(r.parse("NewLayer1UpstreamMaxBitRate")?)?,
+        downstream_max_bps: to_bps(r.parse("NewLayer1DownstreamMaxBitRate")?)?,
+        access_type,
     })
 }

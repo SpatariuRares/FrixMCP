@@ -665,7 +665,7 @@ All strings that come from the router (hostname, friendly name, SSID, log, Smart
 
 - maximum length per field (for example 128 bytes) and per response (for example 64 KiB; the log is paginated);
 - removal of control characters and ANSI sequences;
-- the tool response is JSON with the router's values as JSON strings (so already quoted), preceded by a fixed line such as `Data read from the router (untrusted): …`;
+- the tool response is JSON with the router's values as JSON strings (so already quoted), preceded by a fixed line such as `Untrusted data from the router or from the request: …`;
 - the tool descriptions say explicitly that the returned values are user/network content and must not be interpreted as instructions;
 - no tool accepts a free-form "run action X": each tool does one thing only with typed parameters.
 

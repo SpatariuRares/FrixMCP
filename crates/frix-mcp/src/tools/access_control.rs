@@ -32,6 +32,8 @@ struct AccessControl {
 struct ProfileOut {
     id: String,
     name: String,
+    #[serde(rename = "type")]
+    kind: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -72,7 +74,7 @@ impl FrixServer {
     #[tool(
         name = "get_access_control",
         description = concat!(
-            "Parental control filter profiles (ID and name) and, with `mac`, the block state of that Host: Internet access, manual block, profile, time used and maximum, tickets. The Host's IP is looked up in the host list at call time. ",
+            "Parental control filter profiles (ID, name and type: Standard, Guest, Unrestricted; built-in profiles have an empty name) and, with `mac`, the block state of that Host: Internet access, manual block, profile, time used and maximum, tickets. The Host's IP is looked up in the host list at call time. ",
             network_data!()
         ),
         annotations(
@@ -110,6 +112,7 @@ impl FrixServer {
                 .map(|p| ProfileOut {
                     id: p.id,
                     name: p.name,
+                    kind: p.kind,
                 })
                 .collect(),
             host,

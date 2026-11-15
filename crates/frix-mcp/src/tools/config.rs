@@ -44,6 +44,7 @@ struct AutoUpdate {
     mode: String,
     current_firmware_version: String,
     last_firmware_version: String,
+    last_firmware_build: Option<String>,
     last_update_time: String,
     last_update_result: String,
 }
@@ -204,6 +205,7 @@ impl FrixServer {
                 mode: update.mode,
                 current_firmware_version: update.current_firmware_version,
                 last_firmware_version: update.last_firmware_version,
+                last_firmware_build: update.last_firmware_build,
                 last_update_time: update.last_update_time,
                 last_update_result: update.last_update_result,
             },

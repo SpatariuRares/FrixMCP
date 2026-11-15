@@ -100,7 +100,7 @@ impl FrixServer {
     #[tool(
         name = "list_wifi_clients",
         description = concat!(
-            "Clients associated with the FRITZ!Box Wi-Fi Networks (main_2g, main_5g, guest or all): MAC, IP, signal, speed, channel width and Band. ",
+            "Clients associated with the FRITZ!Box's own Wi-Fi radios (main_2g, main_5g, guest or all): MAC, IP, signal, speed, channel width and Band. Clients of a mesh repeater are not listed here: see get_mesh_topology. A repeater itself can appear with its uplink MAC, which differs from its MAC in list_hosts. ",
             network_data!()
         ),
         annotations(

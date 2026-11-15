@@ -50,6 +50,7 @@ async fn get_time_and_update_returns_time_ntp_and_automatic_updates() {
                 "mode": "important",
                 "current_firmware_version": "154.08.25",
                 "last_firmware_version": "154.08.21",
+                "last_firmware_build": null,
                 "last_update_time": "2026-10-01T03:12:00+02:00",
                 "last_update_result": "succeeded"
             }

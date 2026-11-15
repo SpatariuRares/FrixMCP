@@ -72,8 +72,9 @@ struct DslStatus {
     enabled: Option<bool>,
     status: String,
     link_status: String,
-    modulation: String,
-    profile: String,
+    /// `None` when the WAN is not DSL: the router still reports the modem's setting.
+    modulation: Option<String>,
+    profile: Option<String>,
     data_path: String,
     downstream: DslDirection,
     upstream: DslDirection,
@@ -174,13 +175,14 @@ impl FrixServer {
         let info = wan_dsl::info(&self.client).await?;
         let dsl_line = wan_dsl::line(&self.client).await?;
         let stats = wan_dsl::statistics(&self.client).await?;
+        let on_dsl = link.access_type == "DSL";
         Ok(DslStatus {
             access_type: link.access_type,
             enabled: info.enabled,
             status: info.status,
             link_status: dsl_line.link_status,
-            modulation: dsl_line.modulation,
-            profile: dsl_line.profile,
+            modulation: on_dsl.then_some(dsl_line.modulation),
+            profile: on_dsl.then_some(dsl_line.profile),
             data_path: info.data_path,
             downstream: info.downstream.into(),
             upstream: info.upstream.into(),

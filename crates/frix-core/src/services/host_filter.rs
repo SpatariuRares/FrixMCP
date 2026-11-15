@@ -13,22 +13,24 @@ use crate::tr064::{Tr064Client, xml_list_items};
 
 const SERVICE: &str = "X_AVM-DE_HostFilter:1";
 
-/// A filter profile. TR-064 gives only ID and name, not schedules or lists.
+/// A filter profile: ID, name and type, not the schedules.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FilterProfile {
     /// `FilterProfileID` (for example `filtprof1`).
     pub id: String,
-    /// `Name`: untrusted data.
+    /// `Name`: untrusted data. Empty for the built-in profiles.
     pub name: String,
+    /// `FilterProfileType` (for example `Standard`, `Guest`, `Unrestricted`).
+    pub kind: String,
 }
 
 /// The filter profiles (`GetFilterProfiles`), in list order.
 ///
-/// `NewFilterProfileList` is a nested XML list `<List><Item>…`; the exact format
-/// is to be verified on the router (docs/PROJECT.md §14.3).
+/// `NewFilterProfileList` is a nested XML list, as recorded on the 7590 (FRITZ!OS 8.25):
+/// `<FilterProfileList><FilterProfile><FilterProfileID>…`.
 pub async fn filter_profiles(client: &Tr064Client) -> Result<Vec<FilterProfile>, FrixError> {
     let r = client.call(SERVICE, "GetFilterProfiles", &[]).await?;
-    xml_list_items(r.text("NewFilterProfileList")?, "Item")?
+    xml_list_items(r.text("NewFilterProfileList")?, "FilterProfile")?
         .iter()
         .map(|item| {
             let text = |name: &str| item.get(name).map(|t| t.trim().to_owned());
@@ -37,6 +39,7 @@ pub async fn filter_profiles(client: &Tr064Client) -> Result<Vec<FilterProfile>,
                     FrixError::Parse("filter profile without FilterProfileID".into())
                 })?,
                 name: text("Name").unwrap_or_default(),
+                kind: text("FilterProfileType").unwrap_or_default(),
             })
         })
         .collect()
